@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Achievement Hub - Gamified Rewards System</title>
+    <meta name="description" content="Complete gamified achievement system with reward boxes, coin economy, and rare collectible achievements. Track your progress and unlock amazing rewards!">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Achievement Hub - Gamified Rewards System">
+    <meta property="og:description" content="Unlock achievements, earn coins, and discover rare rewards in our immersive gaming platform.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://your-domain.com">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <style>
+        :root {
+            --space-blue: hsl(214, 61%, 8%);
+            --electric-blue: hsl(190, 100%, 50%);
+            --neon-purple: hsl(255, 65%, 66%);
+            --achievement-gold: hsl(51, 100%, 50%);
+            --space-gray: hsl(215, 28%, 17%);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--space-blue) 0%, var(--space-gray) 50%, var(--space-blue) 100%);
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .bg-space-blue { background-color: var(--space-blue); }
+        .bg-electric-blue { background-color: var(--electric-blue); }
+        .bg-neon-purple { background-color: var(--neon-purple); }
+        .bg-achievement-gold { background-color: var(--achievement-gold); }
+        .bg-space-gray { background-color: var(--space-gray); }
+        .text-electric-blue { color: var(--electric-blue); }
+        .text-neon-purple { color: var(--neon-purple); }
+        .text-achievement-gold { color: var(--achievement-gold); }
+        .border-electric-blue { border-color: var(--electric-blue); }
+        .border-achievement-gold { border-color: var(--achievement-gold); }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 20px var(--electric-blue); }
+            to { box-shadow: 0 0 30px var(--electric-blue), 0 0 40px var(--electric-blue); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+        }
+
+        @keyframes coin-flip {
+            0% { transform: rotateY(0deg); }
+            50% { transform: rotateY(180deg); }
+            100% { transform: rotateY(360deg); }
+        }
+
+        @keyframes achievement-pop {
+            0% { transform: scale(0) rotate(180deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(0deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        @keyframes box-open {
+            0% { transform: scale(1) rotateY(0deg); }
+            30% { transform: scale(1.1) rotateY(15deg); }
+            60% { transform: scale(0.95) rotateY(-10deg); }
+            100% { transform: scale(1) rotateY(0deg); }
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .animate-glow { animation: glow 2s ease-in-out infinite alternate; }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-pulse-glow { animation: pulse-glow 1.5s ease-in-out infinite; }
+        .animate-coin-flip { animation: coin-flip 0.8s ease-in-out; }
+        .animate-achievement-pop { animation: achievement-pop 0.6s ease-out; }
+        .animate-box-open { animation: box-open 1.2s ease-out; }
+        .animate-shimmer { animation: shimmer 2s linear infinite; }
+
+        .achievement-box {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .achievement-box:hover {
+            transform: translateY(-5px);
+        }
+
+        .achievement-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .achievement-box:hover::before {
+            left: 100%;
+        }
+
+        .reward-box {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .reward-box:hover {
+            transform: scale(1.05);
+        }
+
+        .claimed-achievement {
+            background: linear-gradient(135deg, #1F2937 0%, #374151 100%);
+            border: 2px solid #10B981;
+            position: relative;
+        }
+
+        .claimed-achievement::after {
+            content: '✓';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            color: #10B981;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .gradient-text {
+            background: linear-gradient(45deg, var(--electric-blue), var(--achievement-gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .background-pattern {
+            position: fixed;
+            inset: 0;
+            opacity: 0.05;
+            z-index: 0;
+            background-image: radial-gradient(circle at 2px 2px, var(--electric-blue) 1px, transparent 0);
+            background-size: 40px 40px;
+        }
+
+        .loading-spinner {
+            width: 64px;
+            height: 64px;
+            border: 4px solid var(--electric-blue);
+            border-top: 4px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, var(--space-gray) 0%, var(--space-blue) 100%);
+            border: 2px solid var(--electric-blue);
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            transform: scale(0.8);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Pattern -->
+    <div class="background-pattern"></div>
+
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="fixed inset-0 flex items-center justify-center z-50" style="background: linear-gradient(135deg, var(--space-blue) 0%, var(--space-gray) 50%, var(--space-blue) 100%);">
+        <div class="text-center">
+            <div class="loading-spinner mx-auto mb-4"></div>
+            <p class="text-white text-lg">Loading your achievements...</p>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainApp" class="relative z-10" style="display: none;">
+        <!-- Header -->
+        <header class="sticky top-0 z-50" style="background: rgba(23, 37, 84, 0.8); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(0, 212, 255, 0.3);">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center animate-glow" style="background: linear-gradient(135deg, var(--electric-blue) 0%, var(--neon-purple) 100%);">
+                        <i data-lucide="trophy" class="text-white" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold gradient-text">Achievement Hub</h1>
+                </div>
+                
+                <!-- Balance Display -->
+                <div class="flex items-center space-x-6">
+                    <div class="px-6 py-3 flex items-center space-x-3 rounded-xl animate-pulse-glow" data-testid="balance-display" 
+                         style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.1) 100%); border: 1px solid rgba(255, 215, 0, 0.5);">
+                        <i data-lucide="coins" class="animate-coin-flip" style="color: var(--achievement-gold); width: 20px; height: 20px;"></i>
+                        <div>
+                            <div class="text-sm text-gray-300">Balance</div>
+                            <div class="text-xl font-bold text-achievement-gold" id="userBalance">5,000</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Profile Section -->
+            <div class="lg:col-span-1">
+                <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, var(--space-gray) 0%, rgba(139, 92, 246, 0.1) 100%); border: 1px solid rgba(0, 212, 255, 0.3);">
+                    <!-- Profile Header -->
+                    <div class="text-center mb-6">
+                        <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-2xl font-bold animate-float"
+                             style="background: linear-gradient(135deg, var(--electric-blue) 0%, var(--neon-purple) 100%);">
+                            JD
+                        </div>
+                        <h2 class="text-xl font-bold text-white">John Doe</h2>
+                        <p class="text-gray-400">@johndoe</p>
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="text-center p-3 rounded-xl" style="background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3);">
+                            <div class="text-2xl font-bold text-electric-blue" id="totalAchievements">0</div>
+                            <div class="text-sm text-gray-400">Achievements</div>
+                        </div>
+                        <div class="text-center p-3 rounded-xl" style="background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.3);">
+                            <div class="text-2xl font-bold text-achievement-gold">Level 1</div>
+                            <div class="text-sm text-gray-400">Current Level</div>
+                        </div>
+                    </div>
+
+                    <!-- User Info -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Date of Birth:</span>
+                            <span class="text-white">Jan 15, 1995</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">UID:</span>
+                            <span class="text-white font-mono" id="userUID">1234567890123456</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-400">Member Since:</span>
+                            <span class="text-white">Today</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="lg:col-span-3">
+                <!-- Achievement Grid -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-bold gradient-text">Achievements</h2>
+                        <div class="text-sm text-gray-400">
+                            <span id="claimedCount">0</span> / <span id="totalAvailable">21</span> Unlocked
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="achievementGrid">
+                        <!-- Achievement cards will be dynamically inserted here -->
+                    </div>
+                </div>
+
+                <!-- Reward Box System -->
+                <div>
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-bold gradient-text">Reward Boxes</h2>
+                        <div class="text-sm text-gray-400">Open boxes to discover rewards!</div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="rewardBoxGrid">
+                        <!-- Reward boxes will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reward Modal -->
+    <div id="rewardModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="mb-4">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-3xl animate-achievement-pop" id="rewardIcon"></div>
+                <h3 class="text-xl font-bold text-white mb-2" id="rewardTitle">Congratulations!</h3>
+                <p class="text-gray-300" id="rewardDescription">You've earned a reward!</p>
+            </div>
+            <div class="flex justify-center space-x-4">
+                <button onclick="closeRewardModal()" 
+                        class="px-6 py-2 rounded-xl font-semibold transition-all duration-300 hover:scale-105"
+                        style="background: linear-gradient(135deg, var(--electric-blue) 0%, var(--neon-purple) 100%); color: white;">
+                    Awesome!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game Data
+        const achievements = [
+            { id: "trading-future", name: "Trading Future", description: "Complete your first trade", icon: "💰", color: "from-blue-500 to-purple-500", rarity: "Common", maxClaims: 20000, currentClaims: 15432 },
+            { id: "first-victory", name: "First Victory", description: "Win your first game", icon: "🏆", color: "from-yellow-500 to-orange-500", rarity: "Common", maxClaims: 20000, currentClaims: 18765 },
+            { id: "speed-demon", name: "Speed Demon", description: "Complete a task in under 10 seconds", icon: "⚡", color: "from-cyan-500 to-blue-500", rarity: "Uncommon", maxClaims: 10000, currentClaims: 7234 },
+            { id: "team-player", name: "Team Player", description: "Help 5 other players", icon: "🤝", color: "from-green-500 to-emerald-500", rarity: "Uncommon", maxClaims: 10000, currentClaims: 8932 },
+            { id: "perfectionist", name: "Perfectionist", description: "Complete a challenge with 100% accuracy", icon: "🎯", color: "from-purple-500 to-pink-500", rarity: "Rare", maxClaims: 5000, currentClaims: 3456 },
+            { id: "night-owl", name: "Night Owl", description: "Be active for 5 consecutive nights", icon: "🦉", color: "from-indigo-500 to-purple-500", rarity: "Rare", maxClaims: 5000, currentClaims: 2987 },
+            { id: "legendary-warrior", name: "Legendary Warrior", description: "Defeat 100 opponents", icon: "⚔️", color: "from-red-500 to-orange-500", rarity: "Epic", maxClaims: 1000, currentClaims: 456 },
+            { id: "mastermind", name: "Mastermind", description: "Solve 50 complex puzzles", icon: "🧠", color: "from-purple-500 to-blue-500", rarity: "Epic", maxClaims: 1000, currentClaims: 623 },
+            { id: "diamond-collector", name: "Diamond Collector", description: "Collect 1000 rare items", icon: "💎", color: "from-cyan-400 to-blue-600", rarity: "Legendary", maxClaims: 100, currentClaims: 67 },
+            { id: "time-master", name: "Time Master", description: "Master time manipulation abilities", icon: "⏰", color: "from-yellow-400 to-red-500", rarity: "Legendary", maxClaims: 100, currentClaims: 34 },
+            { id: "cosmic-explorer", name: "Cosmic Explorer", description: "Discover all hidden galaxies", icon: "🌌", color: "from-purple-600 to-pink-600", rarity: "Mythical", maxClaims: 10, currentClaims: 7 },
+            { id: "reality-bender", name: "Reality Bender", description: "Alter the fabric of reality itself", icon: "🌀", color: "from-blue-600 to-purple-800", rarity: "Mythical", maxClaims: 10, currentClaims: 3 },
+            { id: "ultimate-champion", name: "Ultimate Champion", description: "Achieve perfection in all aspects", icon: "👑", color: "from-yellow-500 to-yellow-600", rarity: "Ultimate", maxClaims: 2, currentClaims: 1 }
+        ];
+
+        const rewardBoxes = [
+            { id: "bronze", name: "Bronze Box", cost: 100, icon: "📦", color: "from-yellow-600 to-yellow-800", rewards: ["50 Coins", "Common Achievement"] },
+            { id: "silver", name: "Silver Box", cost: 500, icon: "🎁", color: "from-gray-400 to-gray-600", rewards: ["200 Coins", "Uncommon Achievement", "Rare Item"] },
+            { id: "gold", name: "Gold Box", cost: 1000, icon: "🏆", color: "from-yellow-400 to-yellow-600", rewards: ["500 Coins", "Rare Achievement", "Epic Item"] },
+            { id: "platinum", name: "Platinum Box", cost: 2500, icon: "💎", color: "from-blue-400 to-purple-600", rewards: ["1000 Coins", "Epic Achievement", "Legendary Item"] },
+            { id: "legendary", name: "Legendary Box", cost: 5000, icon: "🌟", color: "from-purple-500 to-pink-600", rewards: ["2500 Coins", "Legendary Achievement", "Mythical Item"] }
+        ];
+
+        // User data
+        let userBalance = 5000;
+        let userAchievements = [];
+        let userUID = Math.random().toString().substr(2, 16);
+
+        // Sound effects (base64 encoded)
+        const sounds = {
+            click: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08=",
+            claim: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08=",
+            boxOpen: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08=",
+            achievement: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08="
+        };
+
+        // Sound manager
+        function playSound(soundType) {
+            try {
+                const audio = new Audio(sounds[soundType]);
+                audio.volume = 0.3;
+                audio.play().catch(e => console.log('Sound play failed:', e));
+            } catch (e) {
+                console.log('Sound creation failed:', e);
+            }
+        }
+
+        // Utility functions
+        function formatNumber(num) {
+            return num.toLocaleString();
+        }
+
+        function getRarityColor(rarity) {
+            const colors = {
+                'Common': 'from-gray-500 to-gray-700',
+                'Uncommon': 'from-green-500 to-green-700',
+                'Rare': 'from-blue-500 to-blue-700',
+                'Epic': 'from-purple-500 to-purple-700',
+                'Legendary': 'from-yellow-500 to-yellow-700',
+                'Mythical': 'from-pink-500 to-pink-700',
+                'Ultimate': 'from-red-500 to-red-700'
+            };
+            return colors[rarity] || 'from-gray-500 to-gray-700';
+        }
+
+        // Achievement functions
+        function renderAchievements() {
+            const grid = document.getElementById('achievementGrid');
+            grid.innerHTML = '';
+
+            achievements.forEach(achievement => {
+                const isClaimed = userAchievements.includes(achievement.id);
+                const isAvailable = achievement.currentClaims < achievement.maxClaims;
+                
+                const card = document.createElement('div');
+                card.className = `achievement-box p-6 rounded-2xl border-2 transition-all duration-300 ${
+                    isClaimed ? 'claimed-achievement' : 
+                    isAvailable ? 'border-electric-blue hover:border-achievement-gold' : 'border-gray-600 opacity-50'
+                }`;
+                card.style.background = isClaimed ? 
+                    'linear-gradient(135deg, #1F2937 0%, #374151 100%)' : 
+                    `linear-gradient(135deg, var(--space-gray) 0%, rgba(139, 92, 246, 0.1) 100%)`;
+                
+                card.innerHTML = `
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">${achievement.icon}</div>
+                        <h3 class="text-lg font-bold text-white mb-2">${achievement.name}</h3>
+                        <p class="text-gray-400 text-sm mb-3">${achievement.description}</p>
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-xs px-2 py-1 rounded-full bg-gradient-to-r ${getRarityColor(achievement.rarity)} text-white">
+                                ${achievement.rarity}
+                            </span>
+                            <span class="text-xs text-gray-500">
+                                ${formatNumber(achievement.currentClaims)}/${formatNumber(achievement.maxClaims)}
+                            </span>
+                        </div>
+                        ${!isClaimed && isAvailable ? 
+                            `<button onclick="claimAchievement('${achievement.id}')" 
+                                    class="w-full py-2 rounded-xl font-semibold transition-all duration-300 hover:scale-105"
+                                    style="background: linear-gradient(135deg, var(--electric-blue) 0%, var(--neon-purple) 100%); color: white;"
+                                    data-testid="button-claim-${achievement.id}">
+                                Claim Achievement
+                            </button>` : 
+                            isClaimed ? 
+                                '<div class="text-green-400 font-semibold">✓ Claimed</div>' :
+                                '<div class="text-gray-500 font-semibold">Unavailable</div>'
+                        }
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+
+            updateStats();
+        }
+
+        function claimAchievement(achievementId) {
+            playSound('claim');
+            
+            const achievement = achievements.find(a => a.id === achievementId);
+            if (!achievement || userAchievements.includes(achievementId)) return;
+
+            userAchievements.push(achievementId);
+            achievement.currentClaims++;
+            
+            // Add coins based on rarity
+            const coinRewards = {
+                'Common': 50,
+                'Uncommon': 100,
+                'Rare': 250,
+                'Epic': 500,
+                'Legendary': 1000,
+                'Mythical': 2500,
+                'Ultimate': 5000
+            };
+            
+            const reward = coinRewards[achievement.rarity] || 50;
+            userBalance += reward;
+            
+            showRewardModal({
+                icon: achievement.icon,
+                title: `${achievement.name} Unlocked!`,
+                description: `You earned ${reward} coins!`
+            });
+            
+            renderAchievements();
+            updateBalance();
+            playSound('achievement');
+        }
+
+        // Reward box functions
+        function renderRewardBoxes() {
+            const grid = document.getElementById('rewardBoxGrid');
+            grid.innerHTML = '';
+
+            rewardBoxes.forEach(box => {
+                const canAfford = userBalance >= box.cost;
+                
+                const card = document.createElement('div');
+                card.className = `reward-box p-6 rounded-2xl border-2 transition-all duration-300 ${
+                    canAfford ? 'border-achievement-gold hover:border-electric-blue' : 'border-gray-600 opacity-50'
+                }`;
+                card.style.background = `linear-gradient(135deg, var(--space-gray) 0%, rgba(139, 92, 246, 0.1) 100%)`;
+                
+                card.innerHTML = `
+                    <div class="text-center">
+                        <div class="text-4xl mb-3">${box.icon}</div>
+                        <h3 class="text-lg font-bold text-white mb-2">${box.name}</h3>
+                        <div class="text-achievement-gold font-bold text-xl mb-3">${formatNumber(box.cost)} Coins</div>
+                        <div class="text-xs text-gray-400 mb-4">
+                            Possible rewards: ${box.rewards.join(', ')}
+                        </div>
+                        ${canAfford ? 
+                            `<button onclick="openRewardBox('${box.id}')" 
+                                    class="w-full py-2 rounded-xl font-semibold transition-all duration-300 hover:scale-105"
+                                    style="background: linear-gradient(135deg, var(--achievement-gold) 0%, rgba(255, 215, 0, 0.8) 100%); color: var(--space-blue);"
+                                    data-testid="button-open-${box.id}">
+                                Open Box
+                            </button>` : 
+                            '<div class="text-gray-500 font-semibold">Insufficient Coins</div>'
+                        }
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+
+        function openRewardBox(boxId) {
+            playSound('boxOpen');
+            
+            const box = rewardBoxes.find(b => b.id === boxId);
+            if (!box || userBalance < box.cost) return;
+
+            userBalance -= box.cost;
+            
+            // Generate random reward
+            const rewards = ['coins', 'achievement', 'item'];
+            const randomReward = rewards[Math.floor(Math.random() * rewards.length)];
+            
+            let rewardText = '';
+            let rewardIcon = '🎁';
+            
+            switch (randomReward) {
+                case 'coins':
+                    const coinAmount = Math.floor(box.cost * (0.5 + Math.random() * 0.8));
+                    userBalance += coinAmount;
+                    rewardText = `You found ${formatNumber(coinAmount)} coins!`;
+                    rewardIcon = '💰';
+                    break;
+                case 'achievement':
+                    rewardText = 'You discovered a rare achievement voucher!';
+                    rewardIcon = '🏆';
+                    break;
+                case 'item':
+                    rewardText = 'You found a special item!';
+                    rewardIcon = '✨';
+                    break;
+            }
+            
+            showRewardModal({
+                icon: rewardIcon,
+                title: 'Box Opened!',
+                description: rewardText
+            });
+            
+            renderRewardBoxes();
+            updateBalance();
+        }
+
+        // Modal functions
+        function showRewardModal(reward) {
+            const modal = document.getElementById('rewardModal');
+            const icon = document.getElementById('rewardIcon');
+            const title = document.getElementById('rewardTitle');
+            const description = document.getElementById('rewardDescription');
+            
+            icon.textContent = reward.icon;
+            title.textContent = reward.title;
+            description.textContent = reward.description;
+            
+            modal.classList.add('active');
+        }
+
+        function closeRewardModal() {
+            playSound('click');
+            document.getElementById('rewardModal').classList.remove('active');
+        }
+
+        // Update functions
+        function updateBalance() {
+            document.getElementById('userBalance').textContent = formatNumber(userBalance);
+        }
+
+        function updateStats() {
+            document.getElementById('totalAchievements').textContent = userAchievements.length;
+            document.getElementById('claimedCount').textContent = userAchievements.length;
+            document.getElementById('totalAvailable').textContent = achievements.length;
+        }
+
+        // Initialize application
+        function initializeApp() {
+            // Set user UID
+            document.getElementById('userUID').textContent = userUID;
+            
+            // Render components
+            renderAchievements();
+            renderRewardBoxes();
+            updateBalance();
+            
+            // Hide loading screen and show main app
+            setTimeout(() => {
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                
+                // Initialize Lucide icons
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            }, 2000);
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+        // Click sound for all buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.tagName === 'BUTTON') {
+                playSound('click');
+            }
+        });
+
+        // Close modal on outside click
+        document.getElementById('rewardModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeRewardModal();
+            }
+        });
+    </script>
+</body>
+</html>

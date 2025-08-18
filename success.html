@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification Successful - Exchange Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Poppins', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .glass-effect { background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2); }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+    <div class="glass-effect rounded-3xl p-8 w-full max-w-md text-center">
+        <div class="mb-6">
+            <div class="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="text-white text-3xl">✓</span>
+            </div>
+            <h2 class="text-3xl font-bold text-white mb-2">Verification Successful!</h2>
+            <p class="text-white/80">Your account has been successfully created</p>
+        </div>
+        
+        <div class="text-white/60 text-sm mb-6">
+            <p>🎉 Welcome to Exchange Platform Pre-Launch Community!</p>
+            <p class="mt-2">You can now login to your account</p>
+        </div>
+        
+        <div class="text-white/50 text-xs">
+            <p>Redirecting to login page in <span id="countdown">3</span> seconds...</p>
+        </div>
+    </div>
+
+    <script>
+        const supabase = window.supabase.createClient(
+            'https://xupxsvmbjeygzrdmaeux.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1cHhzdm1iamV5Z3pyZG1hZXV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MTcxMzQsImV4cCI6MjA3MDk5MzEzNH0.EuQFr6myJTjnaJvSBt1Geg9VyPWk-kxLRplEEo9savs'
+        );
+
+        // Update email verification status
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user && user.email) {
+                    await supabase
+                        .from('pre_users')
+                        .update({ email_verified: true })
+                        .eq('email', user.email);
+                }
+            } catch (error) {
+                console.error('Error updating verification status:', error);
+            }
+        });
+
+        // Countdown and redirect
+        let countdown = 3;
+        const countdownElement = document.getElementById('countdown');
+        
+        const timer = setInterval(() => {
+            countdown--;
+            countdownElement.textContent = countdown;
+            
+            if (countdown <= 0) {
+                clearInterval(timer);
+                window.location.href = '/';
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
