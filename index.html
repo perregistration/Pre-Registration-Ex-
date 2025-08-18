@@ -447,7 +447,7 @@
                         email: email,
                         password: password,
                         options: {
-                            emailRedirectTo: `https://perregistration.github.io/Pre-Registration-Ex-/success.html`
+                            emailRedirectTo: `https://38010bd4-d07a-44cc-8f12-52cb9e2b0631-00-16m2bc4ei810n.sisko.replit.dev/success.html`
                         }
                     });
 
@@ -590,7 +590,7 @@
 
                     // Send password reset email
                     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                        redirectTo: `https://perregistration.github.io/Pre-Registration-Ex-/reset-password.html
+                        redirectTo: `https://38010bd4-d07a-44cc-8f12-52cb9e2b0631-00-16m2bc4ei810n.sisko.replit.dev/reset-password.html`
                     });
 
                     if (error) throw error;
