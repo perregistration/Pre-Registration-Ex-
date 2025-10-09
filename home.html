@@ -11,7 +11,6 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://your-domain.com">
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -210,7 +209,7 @@
                             <i data-lucide="coins" class="animate-coin-flip" style="color: var(--achievement-gold); width: 20px; height: 20px;"></i>
                             <div>
                                 <div class="text-sm text-gray-300">Balance (INR)</div>
-                                <div class="text-xl font-bold text-achievement-gold" id="userBalance">Loading...</div>
+                                <div class="text-xl font-bold text-achievement-gold" id="userBalance">5,000</div>
                             </div>
                         </div>
                         
@@ -385,124 +384,26 @@
     </div>
 
     <script>
-        // --- Supabase Configuration ---
-        const SUPABASE_URL = 'https://xupxsvmbjeygzrdmaeux.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1cHhzdm1iamV5Z3pyZG1hZXV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU0MTcxMzQsImV4cCI6MjA3MDk5MzEzNH0.EuQFr6myJTjnaJvSBt1Geg9VyPWk-kxLRplEEo9savs';
+        // --- Simulated Database & User Data (Front-end only for demo) ---
         
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const userWalletDB = {
+            '1234567890123456': { // UID
+                balance: 5000,
+                lastAddRequest: null, // Timestamp
+                positions: {}, // { tokenSymbol: { quantity: 10, buyPrice: 100 } }
+                totalTradedAmount: 0, // NEW: For High-Volume Trader
+                totalTokensBought: 0  // NEW: For Diamond Hands
+            }
+        };
 
-        // --- Global State Variables ---
         const USER_UID = '1234567890123456';
-        let userWallet = { balance: 0, positions: {}, totalTradedAmount: 0, totalTokensBought: 0, lastAddRequest: null }; // Will be loaded from Supabase
-        let userAchievements = []; // Will be loaded from Supabase
-        
+        let userBalance = userWalletDB[USER_UID].balance;
+        let userAchievements = [];
+        let userUID = USER_UID;
         const ADD_BALANCE_MAX = 5000;
         const ADD_BALANCE_COOLDOWN = 24 * 60 * 60 * 1000; // 24 hours in ms
         const ADD_BALANCE_DELAY = 5 * 60 * 1000; // 5 minutes in ms
         const MIN_TRADE_AMOUNT = 100;
-
-        // --- Supabase Data Handlers ---
-
-        /** Fetches user wallet balance and trading data from Supabase. */
-        async function fetchUserWallet() {
-            try {
-                const { data, error } = await supabase
-                    .from('user_wallet_balance')
-                    .select('*')
-                    .eq('user_uid', USER_UID)
-                    .single();
-
-                if (error && error.code !== 'PGRST116') { // PGRST116 means 'no row found'
-                    console.error('Error fetching wallet:', error.message);
-                    return;
-                }
-                
-                if (data) {
-                    // JSON columns need parsing if stored as text, but Supabase usually handles it
-                    userWallet.balance = data.balance || 0;
-                    userWallet.positions = data.positions || {};
-                    userWallet.totalTradedAmount = data.total_traded_amount || 0;
-                    userWallet.totalTokensBought = data.total_tokens_bought || 0;
-                    userWallet.lastAddRequest = data.last_add_request ? new Date(data.last_add_request).getTime() : null;
-                } else {
-                    // Initialize new user wallet in Supabase if no row found
-                    await updateUserWallet({ 
-                        balance: 5000, // Initial balance
-                        positions: {}, 
-                        total_traded_amount: 0, 
-                        total_tokens_bought: 0,
-                        last_add_request: null
-                    });
-                    userWallet.balance = 5000;
-                }
-                updateBalance();
-                updateAddBalanceStatus();
-            } catch (e) {
-                console.error('Critical error in fetchUserWallet:', e);
-            }
-        }
-        
-        /** Updates the user wallet data in Supabase. */
-        async function updateUserWallet(updates) {
-            try {
-                const { error } = await supabase
-                    .from('user_wallet_balance')
-                    .upsert({ user_uid: USER_UID, ...updates }, { onConflict: 'user_uid' });
-
-                if (error) {
-                    console.error('Error updating wallet:', error.message);
-                    return false;
-                }
-                return true;
-            } catch (e) {
-                console.error('Critical error in updateUserWallet:', e);
-                return false;
-            }
-        }
-        
-        /** Fetches claimed achievement IDs for the user. */
-        async function fetchUserAchievements() {
-            try {
-                const { data, error } = await supabase
-                    .from('user_achievement')
-                    .select('achievement_id')
-                    .eq('user_uid', USER_UID);
-
-                if (error) {
-                    console.error('Error fetching achievements:', error.message);
-                    return;
-                }
-                
-                userAchievements = data.map(row => row.achievement_id);
-                renderAchievements();
-                renderMyAchievements();
-            } catch (e) {
-                console.error('Critical error in fetchUserAchievements:', e);
-            }
-        }
-        
-        /** Records a new claimed achievement in Supabase. */
-        async function claimAchievementSupabase(achievementId) {
-            try {
-                const { error } = await supabase
-                    .from('user_achievement')
-                    .insert([{ user_uid: USER_UID, achievement_id: achievementId }]);
-
-                if (error) {
-                    console.error('Error claiming achievement:', error.message);
-                    return false;
-                }
-                return true;
-            } catch (e) {
-                console.error('Critical error in claimAchievementSupabase:', e);
-                return false;
-            }
-        }
-
-
-        // --- CODE REMAINS THE SAME FROM HERE ONWARDS (with minor async adjustments) ---
-
-        // (Original code for achievements, rewards, crypto tokens, sounds, and utility functions is here)
 
         const achievements = [
             // --- NEW: Special User Achievements (3) ---
@@ -631,7 +532,8 @@
         // --- Balance & Add Balance System ---
 
         function updateBalance() {
-            document.getElementById('userBalance').textContent = formatNumber(userWallet.balance);
+            userBalance = userWalletDB[USER_UID].balance;
+            document.getElementById('userBalance').textContent = formatNumber(userBalance);
             renderRewardBoxes(); // Update box affordability
             renderCryptoGrid(); // Update trading button states
         }
@@ -639,7 +541,7 @@
         function updateAddBalanceStatus() {
             const button = document.getElementById('addBalanceButton');
             const statusText = document.getElementById('addBalanceStatus');
-            const lastRequest = userWallet.lastAddRequest;
+            const lastRequest = userWalletDB[USER_UID].lastAddRequest;
             const now = Date.now();
 
             if (lastRequest && (now - lastRequest < ADD_BALANCE_COOLDOWN)) {
@@ -659,7 +561,7 @@
             }
         }
 
-        async function requestBalanceAdd() {
+        function requestBalanceAdd() {
             const button = document.getElementById('addBalanceButton');
             const statusText = document.getElementById('addBalanceStatus');
 
@@ -667,39 +569,27 @@
 
             const amount = ADD_BALANCE_MAX; 
             
-            // 1. Send Request (Simulated) and Update DB for Cooldown
-            const now = Date.now();
-            userWallet.lastAddRequest = now;
-            await updateUserWallet({ last_add_request: new Date(now).toISOString() });
-
+            // 1. Send Request (Simulated)
+            userWalletDB[USER_UID].lastAddRequest = Date.now();
             updateAddBalanceStatus();
             button.textContent = 'Processing... (5 mins)';
             button.style.background = 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)';
             
             // 2. Auto-Add after 5 minutes (Simulated)
-            setTimeout(async () => {
-                userWallet.balance += amount;
+            setTimeout(() => {
+                userWalletDB[USER_UID].balance += amount;
+                updateBalance();
+                updateAddBalanceStatus();
+                statusText.textContent = `₹${formatNumber(amount)} added successfully! New balance: ₹${formatNumber(userBalance)}.`;
                 
-                // Update DB with new balance
-                const success = await updateUserWallet({ balance: userWallet.balance });
+                showRewardModal({
+                    icon: '💸',
+                    title: 'Balance Added!',
+                    subtitle: 'Wallet Update', // Added subtitle
+                    description: `Your **₹${formatNumber(amount)}** request has been processed.`
+                });
                 
-                if (success) {
-                    updateBalance();
-                    updateAddBalanceStatus();
-                    statusText.textContent = `₹${formatNumber(amount)} added successfully! New balance: ₹${formatNumber(userWallet.balance)}.`;
-                    
-                    showRewardModal({
-                        icon: '💸',
-                        title: 'Balance Added!',
-                        subtitle: 'Wallet Update', 
-                        description: `Your **₹${formatNumber(amount)}** request has been processed.`
-                    });
-                } else {
-                    statusText.textContent = 'Error: Could not update balance on server.';
-                    userWallet.balance -= amount; // Revert locally if server failed
-                }
-                
-            }, ADD_BALANCE_DELAY); 
+            }, ADD_BALANCE_DELAY); // 5 minutes delay
             
             playSound('claim');
         }
@@ -797,33 +687,25 @@
             lucide.createIcons();
         }
 
-        async function claimAchievement(achievementId, fromBox = false) {
+        function claimAchievement(achievementId, fromBox = false) {
             playSound('claim');
             
             const achievement = achievements.find(a => a.id === achievementId);
             if (!achievement || userAchievements.includes(achievementId)) return;
 
-            // 1. Add to Supabase
-            const success = await claimAchievementSupabase(achievementId);
-            if (!success) return; // Stop if Supabase failed
-
-            // 2. Update local state
             userAchievements.push(achievementId);
             if (!fromBox) {
-                achievement.currentClaims++; // Simulated claim count update
+                achievement.currentClaims++;
             }
             
-            // 3. Calculate and apply coin reward
+            // Add coins based on rarity
             const coinRewards = {
                 'Common': 50, 'Uncommon': 100, 'Rare': 250, 'Epic': 500, 
                 'Legendary': 1000, 'Mythical': 2500, 'Ultimate': 5000
             };
             
             const reward = coinRewards[achievement.rarity] || 50;
-            userWallet.balance += reward;
-            
-            // 4. Update balance in Supabase
-            await updateUserWallet({ balance: userWallet.balance });
+            userWalletDB[USER_UID].balance += reward;
             
             // NEW: Updated modal display for achievement claim
             showRewardModal({
@@ -838,19 +720,19 @@
             updateBalance();
             playSound('achievement');
             
-            // Check for 'trading-future' achievement unlock (first trade check is simplified here for front-end logic)
+            // Check for 'trading-future' achievement unlock
             if (achievementId !== 'trading-future' && !userAchievements.includes('trading-future')) {
-                const positionsCount = Object.keys(userWallet.positions).length;
+                const positionsCount = Object.keys(userWalletDB[USER_UID].positions).length;
                 let hasPosition = false;
-                for (const symbol in userWallet.positions) {
-                    if (userWallet.positions[symbol].quantity > 0) {
+                for (const symbol in userWalletDB[USER_UID].positions) {
+                    if (userWalletDB[USER_UID].positions[symbol].quantity > 0) {
                         hasPosition = true;
                         break;
                     }
                 }
 
                 if (hasPosition) {
-                    await claimAchievement('trading-future', true); // Must be awaited
+                    claimAchievement('trading-future', true);
                 }
             }
         }
@@ -862,7 +744,7 @@
             grid.innerHTML = '';
 
             rewardBoxes.forEach(box => {
-                const canAfford = userWallet.balance >= box.cost;
+                const canAfford = userBalance >= box.cost;
                 
                 const card = document.createElement('div');
                 card.className = `reward-box p-6 rounded-2xl border-2 transition-all duration-300 ${
@@ -894,13 +776,13 @@
             });
         }
 
-        async function openRewardBox(boxId) {
+        function openRewardBox(boxId) {
             playSound('boxOpen');
             
             const box = rewardBoxes.find(b => b.id === boxId);
-            if (!box || userWallet.balance < box.cost) return;
+            if (!box || userBalance < box.cost) return;
 
-            userWallet.balance -= box.cost;
+            userWalletDB[USER_UID].balance -= box.cost;
             
             // Generate random reward
             const rewardsPool = ['coins', 'achievement', 'item'];
@@ -913,7 +795,7 @@
             switch (randomRewardType) {
                 case 'coins':
                     const coinAmount = Math.floor(box.cost * (0.8 + Math.random() * 0.5)); // 80% to 130% return
-                    userWallet.balance += coinAmount;
+                    userWalletDB[USER_UID].balance += coinAmount;
                     rewardText = `You found **₹${formatNumber(coinAmount)}** coins!`;
                     rewardIcon = '💰';
                     break;
@@ -924,13 +806,12 @@
                         achievementFound = unclaimed[Math.floor(Math.random() * unclaimed.length)];
                         
                         // Claim achievement directly (modal handled inside claimAchievement for clean flow)
-                        await claimAchievement(achievementFound.id, true);
-                        await updateUserWallet({ balance: userWallet.balance }); // Update balance before exiting
+                        claimAchievement(achievementFound.id, true);
                         return; // Exit here as modal is shown inside claimAchievement
                     } else {
                         // Fallback to coins if all claimed
                         const coinAmountFallback = Math.floor(box.cost * 1.2);
-                        userWallet.balance += coinAmountFallback;
+                        userWalletDB[USER_UID].balance += coinAmountFallback;
                         rewardText = `You got an extra large bonus of **₹${formatNumber(coinAmountFallback)}** coins!`;
                         rewardIcon = '💰';
                     }
@@ -940,9 +821,6 @@
                     rewardIcon = '✨';
                     break;
             }
-            
-            // Update balance in Supabase for non-achievement rewards
-            await updateUserWallet({ balance: userWallet.balance });
             
             // Show modal for non-achievement rewards
             showRewardModal({
@@ -1023,8 +901,8 @@
             container.innerHTML = '';
             let positionsExist = false;
 
-            for (const symbol in userWallet.positions) {
-                const position = userWallet.positions[symbol];
+            for (const symbol in userWalletDB[USER_UID].positions) {
+                const position = userWalletDB[USER_UID].positions[symbol];
                 if (position.quantity <= 0) continue;
 
                 positionsExist = true;
@@ -1076,15 +954,15 @@
             title.textContent = `${type.toUpperCase()} ${token.name} (${token.symbol})`;
 
             const isBuy = type === 'buy';
-            const position = userWallet.positions[symbol] || { quantity: 0, buyPrice: 0 };
+            const position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0, buyPrice: 0 };
             const maxSellQuantity = position.quantity;
-            const maxBuyAmount = userWallet.balance;
+            const maxBuyAmount = userBalance;
             const maxQuantityByBalance = maxBuyAmount / token.price;
 
             formContainer.innerHTML = `
                 <div class="mb-4 text-left">
                     <p class="text-lg font-semibold text-white">Current Price: <span class="text-electric-blue">₹${formatNumber(token.price, 2)}</span></p>
-                    ${!isBuy ? `<p class="text-sm text-gray-400">Owned Quantity: <span class="font-semibold text-neon-purple">${formatNumber(maxSellQuantity, 4)}</span></p>` : `<p class="text-sm text-gray-400">Available Balance: <span class="font-semibold text-achievement-gold">₹${formatNumber(userWallet.balance, 2)}</span></p>`}
+                    ${!isBuy ? `<p class="text-sm text-gray-400">Owned Quantity: <span class="font-semibold text-neon-purple">${formatNumber(maxSellQuantity, 4)}</span></p>` : `<p class="text-sm text-gray-400">Available Balance: <span class="font-semibold text-achievement-gold">₹${formatNumber(userBalance, 2)}</span></p>`}
                 </div>
                 
                 <div class="space-y-4 mb-6 p-4 rounded-xl border border-gray-700 bg-space-blue">
@@ -1139,10 +1017,10 @@
 
             if (amount < MIN_TRADE_AMOUNT) {
                 error.textContent = `Minimum trade amount is ₹${MIN_TRADE_AMOUNT}.`;
-            } else if (isBuy && amount > userWallet.balance) {
-                error.textContent = `Insufficient balance. Max buy amount: ₹${formatNumber(userWallet.balance, 2)}.`;
+            } else if (isBuy && amount > userBalance) {
+                error.textContent = `Insufficient balance. Max buy amount: ₹${formatNumber(userBalance, 2)}.`;
             } else if (!isBuy) {
-                const position = userWallet.positions[symbol] || { quantity: 0 };
+                const position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0 };
                 if (calculatedQuantity > position.quantity) {
                      error.textContent = `You only own ${formatNumber(position.quantity, 4)} ${symbol}.`;
                 } else {
@@ -1171,10 +1049,10 @@
 
             if (calculatedAmount < MIN_TRADE_AMOUNT) {
                 error.textContent = `Minimum trade amount is ₹${MIN_TRADE_AMOUNT}.`;
-            } else if (isBuy && calculatedAmount > userWallet.balance) {
-                error.textContent = `Insufficient balance. Max buy amount: ₹${formatNumber(userWallet.balance, 2)}.`;
+            } else if (isBuy && calculatedAmount > userBalance) {
+                error.textContent = `Insufficient balance. Max buy amount: ₹${formatNumber(userBalance, 2)}.`;
             } else if (!isBuy) {
-                const position = userWallet.positions[symbol] || { quantity: 0 };
+                const position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0 };
                 if (quantity > position.quantity) {
                      error.textContent = `You only own ${formatNumber(position.quantity, 4)} ${symbol}.`;
                 } else {
@@ -1185,18 +1063,18 @@
             }
         }
 
-        async function checkAutomaticAchievements() {
+        function checkAutomaticAchievements() {
             // Check High-Volume Trader (₹10,000 traded)
-            if (userWallet.totalTradedAmount >= 10000 && !userAchievements.includes('trader-achievement')) {
-                await claimAchievement('trader-achievement', true);
+            if (userWalletDB[USER_UID].totalTradedAmount >= 10000 && !userAchievements.includes('trader-achievement')) {
+                claimAchievement('trader-achievement', true);
             }
             // Check Diamond Hands (15,000 tokens bought)
-            if (userWallet.totalTokensBought >= 15000 && !userAchievements.includes('holder-achievement')) {
-                await claimAchievement('holder-achievement', true);
+            if (userWalletDB[USER_UID].totalTokensBought >= 15000 && !userAchievements.includes('holder-achievement')) {
+                claimAchievement('holder-achievement', true);
             }
         }
 
-        async function executeTrade(symbol, type) {
+        function executeTrade(symbol, type) {
             const token = cryptoTokens.find(t => t.symbol === symbol);
             const amount = parseFloat(document.getElementById('amountInput').value);
             const quantity = parseFloat(document.getElementById('quantityInput').value);
@@ -1207,86 +1085,66 @@
                 return;
             }
 
-            // Prepare updates for Supabase
-            const updates = {
-                balance: userWallet.balance,
-                positions: userWallet.positions,
-                total_traded_amount: userWallet.totalTradedAmount + amount,
-                total_tokens_bought: userWallet.totalTokensBought,
-            };
+            // Update total traded amount (for High-Volume Trader achievement)
+            userWalletDB[USER_UID].totalTradedAmount += amount;
 
             if (type === 'buy') {
-                if (amount > userWallet.balance) {
+                if (amount > userBalance) {
                     error.textContent = 'Insufficient balance.';
                     return;
                 }
                 
-                updates.balance = userWallet.balance - amount;
-                updates.total_tokens_bought = userWallet.totalTokensBought + quantity;
+                userWalletDB[USER_UID].balance -= amount;
                 
-                let position = userWallet.positions[symbol] || { quantity: 0, buyPrice: 0 };
+                // Update total tokens bought (for Diamond Hands achievement)
+                userWalletDB[USER_UID].totalTokensBought += quantity;
+                
+                let position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0, buyPrice: 0 };
                 
                 const totalCost = (position.quantity * position.buyPrice) + amount;
                 const totalQuantity = position.quantity + quantity;
                 const newAvgPrice = totalCost / totalQuantity;
 
-                updates.positions = {
-                    ...userWallet.positions,
-                    [symbol]: {
-                        quantity: totalQuantity,
-                        buyPrice: newAvgPrice
-                    }
+                userWalletDB[USER_UID].positions[symbol] = {
+                    quantity: totalQuantity,
+                    buyPrice: newAvgPrice
                 };
                 
+                // Check for 'trading-future' achievement (first trade)
+                if (!userAchievements.includes('trading-future')) {
+                    claimAchievement('trading-future', true);
+                }
+
+                showTradeSuccessModal('Buy', symbol, quantity, amount);
+
             } else if (type === 'sell') {
-                const position = userWallet.positions[symbol] || { quantity: 0 };
+                const position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0 };
                 
                 if (quantity > position.quantity) {
                     error.textContent = `Cannot sell more than owned quantity (${formatNumber(position.quantity, 4)}).`;
                     return;
                 }
                 
-                updates.balance = userWallet.balance + amount;
+                userWalletDB[USER_UID].balance += amount;
                 
                 // Update position
-                const updatedPosition = { ...position };
-                updatedPosition.quantity -= quantity;
-                
-                updates.positions = { ...userWallet.positions };
-                if (updatedPosition.quantity < 0.00001) { 
-                    delete updates.positions[symbol];
+                position.quantity -= quantity;
+                if (position.quantity < 0.00001) { // Floating point safety
+                    delete userWalletDB[USER_UID].positions[symbol];
                 } else {
-                    updates.positions[symbol] = updatedPosition;
+                    userWalletDB[USER_UID].positions[symbol] = position;
                 }
+                
+                showTradeSuccessModal('Sell', symbol, quantity, amount);
             }
 
-            // Execute Supabase update
-            const success = await updateUserWallet(updates);
+            // Check for new auto-achievements after trade
+            checkAutomaticAchievements();
 
-            if (success) {
-                // Update local state after successful DB operation
-                userWallet.balance = updates.balance;
-                userWallet.positions = updates.positions;
-                userWallet.totalTradedAmount = updates.total_traded_amount;
-                userWallet.totalTokensBought = updates.total_tokens_bought;
-                
-                showTradeSuccessModal(type === 'buy' ? 'Buy' : 'Sell', symbol, quantity, amount);
-                
-                // Check for 'trading-future' achievement (first trade)
-                if (type === 'buy' && !userAchievements.includes('trading-future')) {
-                    await claimAchievement('trading-future', true);
-                }
-
-                // Check for new auto-achievements after trade
-                await checkAutomaticAchievements();
-
-                updateBalance();
-                closeTradingModal();
-                renderUserPositions();
-                playSound('trade');
-            } else {
-                error.textContent = 'Trade failed: Server update error.';
-            }
+            updateBalance();
+            closeTradingModal();
+            renderUserPositions();
+            playSound('trade');
         }
 
         // --- Modal & Utility Functions ---
@@ -1295,13 +1153,13 @@
             const modal = document.getElementById('rewardModal');
             const icon = document.getElementById('rewardIcon');
             const title = document.getElementById('rewardTitle');
-            const subtitle = document.getElementById('rewardSubtitle'); 
+            const subtitle = document.getElementById('rewardSubtitle'); // NEW element
             const description = document.getElementById('rewardDescription');
             
             icon.textContent = reward.icon;
             title.textContent = reward.title;
-            subtitle.textContent = reward.subtitle || ''; 
-            description.innerHTML = reward.description.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); 
+            subtitle.textContent = reward.subtitle || ''; // Display subtitle if available
+            description.innerHTML = reward.description.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold formatting
             
             modal.classList.add('active');
         }
@@ -1333,20 +1191,21 @@
 
         // --- Initialization ---
 
-        async function initializeApp() {
+        function initializeApp() {
             // Set user UID
-            document.getElementById('userUID').textContent = USER_UID;
-            
-            // Load data from Supabase first
-            await fetchUserWallet();
-            await fetchUserAchievements();
+            document.getElementById('userUID').textContent = userUID;
             
             // Render components
+            renderAchievements();
+            renderMyAchievements();
             renderRewardBoxes();
             
             // Start crypto price update interval (30 seconds for a lively demo)
             updateCryptoPrices();
             setInterval(updateCryptoPrices, 30000); 
+
+            updateBalance();
+            updateAddBalanceStatus();
 
             // Set initial active section
             showSection('achievements');
