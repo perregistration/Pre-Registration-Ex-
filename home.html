@@ -173,6 +173,13 @@
             background-clip: content-box, border-box;
         }
 
+        /* Custom style for highly attractive Red Card achievement */
+        .red-card-glow {
+            border: 3px solid #ff0000;
+            box-shadow: 0 0 15px #ff0000, inset 0 0 10px #ff0000;
+            animation: pulse-glow 1s ease-in-out infinite alternate;
+        }
+
         .crypto-price-up { color: var(--crypto-green); }
         .crypto-price-down { color: var(--crypto-red); }
 
@@ -297,7 +304,7 @@
                             <span>All Achievements</span>
                         </h2>
                         <div class="text-sm text-gray-400">
-                            <span id="claimedCount">0</span> / <span id="totalAvailable">21</span> Unlocked
+                            <span id="claimedCount">0</span> / <span id="totalAvailable">22</span> Unlocked
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="achievementGrid">
@@ -351,7 +358,8 @@
 
     <div id="rewardModal" class="modal-overlay">
         <div class="modal-content animate-achievement-pop">
-            <h3 class="text-4xl font-extrabold text-neon-purple mb-4 animate-glow">CONGRATULATIONS!</h3>
+            <h3 class="text-4xl font-extrabold text-neon-purple mb-1 animate-glow">CONGRATULATIONS!</h3>
+            <p class="text-sm text-achievement-gold font-bold mb-4" id="rewardSubtitle"></p> 
             <div class="mb-4">
                 <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-3xl animate-achievement-pop" id="rewardIcon"></div>
                 <h3 class="text-xl font-bold text-white mb-2" id="rewardTitle">You've earned a reward!</h3>
@@ -382,7 +390,9 @@
             '1234567890123456': { // UID
                 balance: 5000,
                 lastAddRequest: null, // Timestamp
-                positions: {} // { tokenSymbol: { quantity: 10, buyPrice: 100 } }
+                positions: {}, // { tokenSymbol: { quantity: 10, buyPrice: 100 } }
+                totalTradedAmount: 0, // NEW: For High-Volume Trader
+                totalTokensBought: 0  // NEW: For Diamond Hands
             }
         };
 
@@ -396,6 +406,20 @@
         const MIN_TRADE_AMOUNT = 100;
 
         const achievements = [
+            // --- NEW: Special User Achievements (3) ---
+            { id: "red-card-achievement", name: "Red Card", description: "Hold the most volatile token for 7 days.", icon: "🛑", color: "from-red-600 to-red-900", rarity: "Legendary", maxClaims: 100000, currentClaims: 95800 }, // Attractive!
+            { id: "trader-achievement", name: "High-Volume Trader", description: "Trade a total of ₹10,000 in volume.", icon: "💸", color: "from-green-500 to-green-700", rarity: "Rare", maxClaims: 300, currentClaims: 150 }, // Auto unlock
+            { id: "holder-achievement", name: "Diamond Hands", description: "Buy a total of 15,000 crypto tokens.", icon: "💎", color: "from-cyan-500 to-blue-500", rarity: "Epic", maxClaims: 250, currentClaims: 120 }, // Auto unlock
+
+            // --- NEW: Reward Box Pool Achievements (6) ---
+            { id: "red-zone-trader", name: "Red Zone Trader", description: "Make a losing trade and keep holding.", icon: "🔥", color: "from-red-400 to-red-600", rarity: "Common", maxClaims: 20000, currentClaims: 10000 },
+            { id: "top-trader", name: "Top Trader", description: "Achieve 5 winning trades in a row.", icon: "📈", color: "from-green-500 to-green-600", rarity: "Uncommon", maxClaims: 15000, currentClaims: 5000 },
+            { id: "expert-achievement", name: "Expert", description: "Use all trading features at least once.", icon: "👨‍💼", color: "from-purple-400 to-purple-500", rarity: "Rare", maxClaims: 5000, currentClaims: 3000 },
+            { id: "lucky-achievement", name: "Lucky Coin", description: "Open 3 consecutive Bronze Boxes.", icon: "🍀", color: "from-lime-400 to-lime-500", rarity: "Common", maxClaims: 20000, currentClaims: 12000 },
+            { id: "first-goal-achievement", name: "First Goal", description: "Complete your first task in the hub.", icon: "🥅", color: "from-blue-400 to-blue-600", rarity: "Common", maxClaims: 20000, currentClaims: 18000 },
+            { id: "crypto-master-achievement", name: "Crypto Master", description: "Trade 5 unique crypto tokens.", icon: "🌐", color: "from-indigo-500 to-indigo-700", rarity: "Epic", maxClaims: 1000, currentClaims: 500 },
+            
+            // --- Original Achievements (13) ---
             { id: "trading-future", name: "Trading Future", description: "Complete your first trade", icon: "💰", color: "from-blue-500 to-purple-500", rarity: "Common", maxClaims: 20000, currentClaims: 15432 },
             { id: "first-victory", name: "First Victory", description: "Win your first game", icon: "🏆", color: "from-yellow-500 to-orange-500", rarity: "Common", maxClaims: 20000, currentClaims: 18765 },
             { id: "speed-demon", name: "Speed Demon", description: "Complete a task in under 10 seconds", icon: "⚡", color: "from-cyan-500 to-blue-500", rarity: "Uncommon", maxClaims: 10000, currentClaims: 7234 },
@@ -561,6 +585,7 @@
                 showRewardModal({
                     icon: '💸',
                     title: 'Balance Added!',
+                    subtitle: 'Wallet Update', // Added subtitle
                     description: `Your **₹${formatNumber(amount)}** request has been processed.`
                 });
                 
@@ -580,11 +605,14 @@
                 const isAvailable = achievement.currentClaims < achievement.maxClaims;
                 const rarityClass = achievement.rarity === 'Ultimate' ? 'rarity-ultimate' : '';
                 
+                // Add Red Card specific attractive styling
+                const redCardClass = achievement.id === 'red-card-achievement' ? 'red-card-glow' : '';
+                
                 const card = document.createElement('div');
                 card.className = `achievement-box p-6 rounded-2xl border-2 transition-all duration-300 ${
                     isClaimed ? 'claimed-achievement' : 
                     isAvailable ? 'border-electric-blue hover:border-achievement-gold' : 'border-gray-600 opacity-50'
-                } ${rarityClass}`;
+                } ${rarityClass} ${redCardClass}`;
                 card.style.background = isClaimed ? 
                     'linear-gradient(135deg, #1F2937 0%, #374151 100%)' : 
                     `linear-gradient(135deg, var(--space-gray) 0%, rgba(139, 92, 246, 0.1) 100%)`;
@@ -679,9 +707,11 @@
             const reward = coinRewards[achievement.rarity] || 50;
             userWalletDB[USER_UID].balance += reward;
             
+            // NEW: Updated modal display for achievement claim
             showRewardModal({
                 icon: achievement.icon,
                 title: `${achievement.name} Unlocked!`,
+                subtitle: 'Achievement', 
                 description: `You earned **₹${formatNumber(reward)}** coins!`
             });
             
@@ -690,7 +720,7 @@
             updateBalance();
             playSound('achievement');
             
-            // Check for trading-future achievement unlock
+            // Check for 'trading-future' achievement unlock
             if (achievementId !== 'trading-future' && !userAchievements.includes('trading-future')) {
                 const positionsCount = Object.keys(userWalletDB[USER_UID].positions).length;
                 let hasPosition = false;
@@ -774,9 +804,10 @@
                     const unclaimed = achievements.filter(a => !userAchievements.includes(a.id));
                     if (unclaimed.length > 0) {
                         achievementFound = unclaimed[Math.floor(Math.random() * unclaimed.length)];
+                        
+                        // Claim achievement directly (modal handled inside claimAchievement for clean flow)
                         claimAchievement(achievementFound.id, true);
-                        rewardText = `You instantly unlocked the **${achievementFound.name}** achievement!`;
-                        rewardIcon = achievementFound.icon;
+                        return; // Exit here as modal is shown inside claimAchievement
                     } else {
                         // Fallback to coins if all claimed
                         const coinAmountFallback = Math.floor(box.cost * 1.2);
@@ -791,14 +822,13 @@
                     break;
             }
             
-            // The claimAchievement function handles the modal if an achievement is unlocked.
-            if (!achievementFound) {
-                showRewardModal({
-                    icon: rewardIcon,
-                    title: 'Box Opened!',
-                    description: rewardText
-                });
-            }
+            // Show modal for non-achievement rewards
+            showRewardModal({
+                icon: rewardIcon,
+                title: 'Box Opened!',
+                subtitle: 'Reward Unlocked',
+                description: rewardText
+            });
             
             renderRewardBoxes();
             updateBalance();
@@ -808,8 +838,8 @@
 
         function updateCryptoPrices() {
             cryptoTokens = cryptoTokens.map(token => {
-                const change = token.price * token.volatility * (Math.random() - 0.5) * 0.5; // Up to 2.5% change
                 token.lastPrice = token.price || token.price; // Initialize lastPrice if null
+                const change = token.price * token.volatility * (Math.random() - 0.5) * 0.5; // Up to 2.5% change
                 token.price = Math.max(1, token.price + change);
                 token.change = (token.price - token.lastPrice) / token.lastPrice * 100;
                 return token;
@@ -1033,6 +1063,17 @@
             }
         }
 
+        function checkAutomaticAchievements() {
+            // Check High-Volume Trader (₹10,000 traded)
+            if (userWalletDB[USER_UID].totalTradedAmount >= 10000 && !userAchievements.includes('trader-achievement')) {
+                claimAchievement('trader-achievement', true);
+            }
+            // Check Diamond Hands (15,000 tokens bought)
+            if (userWalletDB[USER_UID].totalTokensBought >= 15000 && !userAchievements.includes('holder-achievement')) {
+                claimAchievement('holder-achievement', true);
+            }
+        }
+
         function executeTrade(symbol, type) {
             const token = cryptoTokens.find(t => t.symbol === symbol);
             const amount = parseFloat(document.getElementById('amountInput').value);
@@ -1044,6 +1085,9 @@
                 return;
             }
 
+            // Update total traded amount (for High-Volume Trader achievement)
+            userWalletDB[USER_UID].totalTradedAmount += amount;
+
             if (type === 'buy') {
                 if (amount > userBalance) {
                     error.textContent = 'Insufficient balance.';
@@ -1051,6 +1095,10 @@
                 }
                 
                 userWalletDB[USER_UID].balance -= amount;
+                
+                // Update total tokens bought (for Diamond Hands achievement)
+                userWalletDB[USER_UID].totalTokensBought += quantity;
+                
                 let position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0, buyPrice: 0 };
                 
                 const totalCost = (position.quantity * position.buyPrice) + amount;
@@ -1062,7 +1110,7 @@
                     buyPrice: newAvgPrice
                 };
                 
-                // Check for 'trading-future' achievement
+                // Check for 'trading-future' achievement (first trade)
                 if (!userAchievements.includes('trading-future')) {
                     claimAchievement('trading-future', true);
                 }
@@ -1090,6 +1138,9 @@
                 showTradeSuccessModal('Sell', symbol, quantity, amount);
             }
 
+            // Check for new auto-achievements after trade
+            checkAutomaticAchievements();
+
             updateBalance();
             closeTradingModal();
             renderUserPositions();
@@ -1102,10 +1153,12 @@
             const modal = document.getElementById('rewardModal');
             const icon = document.getElementById('rewardIcon');
             const title = document.getElementById('rewardTitle');
+            const subtitle = document.getElementById('rewardSubtitle'); // NEW element
             const description = document.getElementById('rewardDescription');
             
             icon.textContent = reward.icon;
             title.textContent = reward.title;
+            subtitle.textContent = reward.subtitle || ''; // Display subtitle if available
             description.innerHTML = reward.description.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold formatting
             
             modal.classList.add('active');
@@ -1125,6 +1178,7 @@
             showRewardModal({
                 icon: type === 'Buy' ? '📈' : '📉',
                 title: `${type} Successful!`,
+                subtitle: 'Trade Completed',
                 description: `You successfully ${type.toLowerCase()} **${formatNumber(quantity, 4)} ${symbol}** for **₹${formatNumber(amount, 2)}**.`
             });
         }
@@ -1132,7 +1186,7 @@
         function updateStats() {
             document.getElementById('totalAchievements').textContent = userAchievements.length;
             document.getElementById('claimedCount').textContent = userAchievements.length;
-            document.getElementById('totalAvailable').textContent = achievements.length;
+            document.getElementById('totalAvailable').textContent = achievements.length; // Now 22
         }
 
         // --- Initialization ---
