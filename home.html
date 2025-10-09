@@ -3,24 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Achievement Hub - Gamified Rewards System</title>
+    <title>Achievement Hub - Gamified Rewards & Trading System</title>
     <meta name="description" content="Complete gamified achievement system with reward boxes, coin economy, and rare collectible achievements. Track your progress and unlock amazing rewards!">
     
-    <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="Achievement Hub - Gamified Rewards System">
     <meta property="og:description" content="Unlock achievements, earn coins, and discover rare rewards in our immersive gaming platform.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://your-domain.com">
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     
     <style>
@@ -30,6 +26,8 @@
             --neon-purple: hsl(255, 65%, 66%);
             --achievement-gold: hsl(51, 100%, 50%);
             --space-gray: hsl(215, 28%, 17%);
+            --crypto-green: #10B981;
+            --crypto-red: #EF4444;
         }
 
         body {
@@ -73,7 +71,7 @@
         }
 
         @keyframes achievement-pop {
-            0% { transform: scale(0) rotate(180deg); opacity: 0; }
+            0% { transform: scale(0) rotate(-180deg); opacity: 0; }
             50% { transform: scale(1.2) rotate(0deg); opacity: 1; }
             100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
@@ -90,6 +88,11 @@
             100% { transform: translateX(100%); }
         }
 
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .animate-glow { animation: glow 2s ease-in-out infinite alternate; }
         .animate-float { animation: float 3s ease-in-out infinite; }
         .animate-pulse-glow { animation: pulse-glow 1.5s ease-in-out infinite; }
@@ -98,41 +101,16 @@
         .animate-box-open { animation: box-open 1.2s ease-out; }
         .animate-shimmer { animation: shimmer 2s linear infinite; }
 
-        .achievement-box {
+        .achievement-box, .reward-box, .crypto-card {
             position: relative;
             overflow: hidden;
             transition: all 0.3s ease;
             cursor: pointer;
         }
 
-        .achievement-box:hover {
-            transform: translateY(-5px);
-        }
-
-        .achievement-box::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-
-        .achievement-box:hover::before {
-            left: 100%;
-        }
-
-        .reward-box {
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .reward-box:hover {
-            transform: scale(1.05);
+        .achievement-box:hover, .reward-box:hover, .crypto-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(0, 212, 255, 0.2);
         }
 
         .claimed-achievement {
@@ -176,11 +154,6 @@
             animation: spin 1s linear infinite;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -215,23 +188,34 @@
         .modal-overlay.active .modal-content {
             transform: scale(1);
         }
+
+        .rarity-ultimate {
+            border: 3px solid transparent;
+            background-image: linear-gradient(var(--space-gray), var(--space-gray)), linear-gradient(45deg, red, orange, yellow);
+            background-origin: border-box;
+            background-clip: content-box, border-box;
+        }
+
+        .crypto-price-up { color: var(--crypto-green); }
+        .crypto-price-down { color: var(--crypto-red); }
+
+        /* Trading Modal specific style */
+        #tradingModal .modal-content {
+            max-width: 600px;
+        }
     </style>
 </head>
 <body>
-    <!-- Background Pattern -->
     <div class="background-pattern"></div>
 
-    <!-- Loading Screen -->
     <div id="loadingScreen" class="fixed inset-0 flex items-center justify-center z-50" style="background: linear-gradient(135deg, var(--space-blue) 0%, var(--space-gray) 50%, var(--space-blue) 100%);">
         <div class="text-center">
             <div class="loading-spinner mx-auto mb-4"></div>
-            <p class="text-white text-lg">Loading your achievements...</p>
+            <p class="text-white text-lg">Loading your hub...</p>
         </div>
     </div>
 
-    <!-- Main Application -->
     <div id="mainApp" class="relative z-10" style="display: none;">
-        <!-- Header -->
         <header class="sticky top-0 z-50" style="background: rgba(23, 37, 84, 0.8); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(0, 212, 255, 0.3);">
             <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
                 <div class="flex items-center space-x-4">
@@ -241,14 +225,33 @@
                     <h1 class="text-2xl font-bold gradient-text">Achievement Hub</h1>
                 </div>
                 
-                <!-- Balance Display -->
                 <div class="flex items-center space-x-6">
-                    <div class="px-6 py-3 flex items-center space-x-3 rounded-xl animate-pulse-glow" data-testid="balance-display" 
-                         style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.1) 100%); border: 1px solid rgba(255, 215, 0, 0.5);">
-                        <i data-lucide="coins" class="animate-coin-flip" style="color: var(--achievement-gold); width: 20px; height: 20px;"></i>
-                        <div>
-                            <div class="text-sm text-gray-300">Balance</div>
-                            <div class="text-xl font-bold text-achievement-gold" id="userBalance">5,000</div>
+                    <div class="relative group">
+                        <div class="px-6 py-3 flex items-center space-x-3 rounded-xl animate-pulse-glow cursor-pointer" 
+                            style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.1) 100%); border: 1px solid rgba(255, 215, 0, 0.5);">
+                            <i data-lucide="coins" class="animate-coin-flip" style="color: var(--achievement-gold); width: 20px; height: 20px;"></i>
+                            <div>
+                                <div class="text-sm text-gray-300">Balance (INR)</div>
+                                <div class="text-xl font-bold text-achievement-gold" id="userBalance">5,000</div>
+                            </div>
+                        </div>
+                        
+                        <div class="absolute right-0 mt-2 w-72 bg-space-gray rounded-xl shadow-lg border border-electric-blue p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50">
+                            <div class="text-lg font-bold text-white mb-3 flex items-center justify-between">
+                                Add Balance
+                                <i data-lucide="wallet" class="w-5 h-5 text-electric-blue"></i>
+                            </div>
+                            <div class="mb-3">
+                                <label for="addAmount" class="block text-sm font-medium text-gray-400 mb-1">Max Add Amount (₹)</label>
+                                <input type="number" id="addAmount" value="5000" min="100" max="5000" readonly
+                                    class="w-full px-3 py-2 bg-space-blue rounded-lg text-white border border-gray-600 focus:border-neon-purple focus:ring focus:ring-neon-purple focus:ring-opacity-50">
+                            </div>
+                            <button id="addBalanceButton" onclick="requestBalanceAdd()" 
+                                class="w-full py-2 rounded-xl font-semibold transition-all duration-300 hover:scale-105"
+                                style="background: linear-gradient(135deg, var(--electric-blue) 0%, var(--neon-purple) 100%); color: white;">
+                                Request Add Balance (₹5,000)
+                            </button>
+                            <p id="addBalanceStatus" class="text-sm mt-2 text-center text-gray-400"></p>
                         </div>
                     </div>
                 </div>
@@ -256,10 +259,8 @@
         </header>
 
         <div class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <!-- Profile Section -->
             <div class="lg:col-span-1">
-                <div class="p-6 rounded-2xl" style="background: linear-gradient(135deg, var(--space-gray) 0%, rgba(139, 92, 246, 0.1) 100%); border: 1px solid rgba(0, 212, 255, 0.3);">
-                    <!-- Profile Header -->
+                <div class="p-6 rounded-2xl sticky top-24" style="background: linear-gradient(135deg, var(--space-gray) 0%, rgba(139, 92, 246, 0.1) 100%); border: 1px solid rgba(0, 212, 255, 0.3);">
                     <div class="text-center mb-6">
                         <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-2xl font-bold animate-float"
                              style="background: linear-gradient(135deg, var(--electric-blue) 0%, var(--neon-purple) 100%);">
@@ -269,7 +270,6 @@
                         <p class="text-gray-400">@johndoe</p>
                     </div>
 
-                    <!-- Stats Grid -->
                     <div class="grid grid-cols-2 gap-4 mb-6">
                         <div class="text-center p-3 rounded-xl" style="background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3);">
                             <div class="text-2xl font-bold text-electric-blue" id="totalAchievements">0</div>
@@ -281,62 +281,103 @@
                         </div>
                     </div>
 
-                    <!-- User Info -->
                     <div class="space-y-3">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-400">Date of Birth:</span>
-                            <span class="text-white">Jan 15, 1995</span>
-                        </div>
+                        <button onclick="showSection('achievements')" class="w-full text-left p-3 rounded-xl font-semibold text-white transition-colors duration-200 flex items-center space-x-3 hover:bg-space-blue active-section" id="nav-achievements"
+                            style="background: linear-gradient(90deg, var(--electric-blue) 0%, rgba(0, 212, 255, 0.1) 100%);">
+                            <i data-lucide="trophy" class="w-5 h-5"></i>
+                            <span>All Achievements</span>
+                        </button>
+                        <button onclick="showSection('my-achievements')" class="w-full text-left p-3 rounded-xl font-semibold text-white transition-colors duration-200 flex items-center space-x-3 hover:bg-space-blue" id="nav-my-achievements">
+                            <i data-lucide="gem" class="w-5 h-5 text-neon-purple"></i>
+                            <span>My Achievements</span>
+                        </button>
+                        <button onclick="showSection('rewards')" class="w-full text-left p-3 rounded-xl font-semibold text-white transition-colors duration-200 flex items-center space-x-3 hover:bg-space-blue" id="nav-rewards">
+                            <i data-lucide="gift" class="w-5 h-5 text-achievement-gold"></i>
+                            <span>Reward Boxes</span>
+                        </button>
+                        <button onclick="showSection('trading')" class="w-full text-left p-3 rounded-xl font-semibold text-white transition-colors duration-200 flex items-center space-x-3 hover:bg-space-blue" id="nav-trading">
+                            <i data-lucide="trending-up" class="w-5 h-5 text-crypto-green"></i>
+                            <span>Crypto Trading</span>
+                        </button>
+                    </div>
+
+                    <div class="space-y-3 mt-6 pt-6 border-t border-gray-700">
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-400">UID:</span>
-                            <span class="text-white font-mono" id="userUID">1234567890123456</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-400">Member Since:</span>
-                            <span class="text-white">Today</span>
+                            <span class="text-white font-mono text-xs" id="userUID">1234567890123456</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Main Content -->
             <div class="lg:col-span-3">
-                <!-- Achievement Grid -->
-                <div class="mb-8">
+                
+                <div id="section-achievements" class="section">
                     <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-2xl font-bold gradient-text">Achievements</h2>
+                        <h2 class="text-3xl font-bold gradient-text flex items-center space-x-3">
+                            <i data-lucide="award" class="w-7 h-7"></i>
+                            <span>All Achievements</span>
+                        </h2>
                         <div class="text-sm text-gray-400">
                             <span id="claimedCount">0</span> / <span id="totalAvailable">21</span> Unlocked
                         </div>
                     </div>
-
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="achievementGrid">
-                        <!-- Achievement cards will be dynamically inserted here -->
-                    </div>
+                        </div>
                 </div>
 
-                <!-- Reward Box System -->
-                <div>
+                <div id="section-my-achievements" class="section hidden">
+                    <h2 class="text-3xl font-bold gradient-text mb-6 flex items-center space-x-3">
+                        <i data-lucide="gem" class="w-7 h-7"></i>
+                        <span>My Claimed Achievements</span>
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="myAchievementGrid">
+                        <p class="text-gray-400 italic col-span-full">You haven't claimed any achievements yet. Claim one now!</p>
+                    </div>
+                </div>
+                
+                <div id="section-rewards" class="section hidden">
                     <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-2xl font-bold gradient-text">Reward Boxes</h2>
+                        <h2 class="text-3xl font-bold gradient-text flex items-center space-x-3">
+                            <i data-lucide="gift" class="w-7 h-7"></i>
+                            <span>Reward Boxes</span>
+                        </h2>
                         <div class="text-sm text-gray-400">Open boxes to discover rewards!</div>
                     </div>
-
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="rewardBoxGrid">
-                        <!-- Reward boxes will be dynamically inserted here -->
+                        </div>
+                </div>
+
+                <div id="section-trading" class="section hidden">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-3xl font-bold gradient-text flex items-center space-x-3">
+                            <i data-lucide="trending-up" class="w-7 h-7"></i>
+                            <span>Crypto Trading (Demo)</span>
+                        </h2>
+                        <div class="text-sm text-gray-400">Trade with your in-game balance.</div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="cryptoGrid">
+                        </div>
+
+                    <div class="mt-8">
+                        <h3 class="text-xl font-bold text-white mb-4 border-b border-gray-700 pb-2">Your Positions</h3>
+                        <div id="userPositions" class="space-y-4">
+                            <p class="text-gray-400 italic">You have no open positions.</p>
+                        </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
 
-    <!-- Reward Modal -->
     <div id="rewardModal" class="modal-overlay">
-        <div class="modal-content">
+        <div class="modal-content animate-achievement-pop">
+            <h3 class="text-4xl font-extrabold text-neon-purple mb-4 animate-glow">CONGRATULATIONS!</h3>
             <div class="mb-4">
                 <div class="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-3xl animate-achievement-pop" id="rewardIcon"></div>
-                <h3 class="text-xl font-bold text-white mb-2" id="rewardTitle">Congratulations!</h3>
-                <p class="text-gray-300" id="rewardDescription">You've earned a reward!</p>
+                <h3 class="text-xl font-bold text-white mb-2" id="rewardTitle">You've earned a reward!</h3>
+                <p class="text-gray-300" id="rewardDescription">Discover your prize!</p>
             </div>
             <div class="flex justify-center space-x-4">
                 <button onclick="closeRewardModal()" 
@@ -348,8 +389,34 @@
         </div>
     </div>
 
+    <div id="tradingModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-2xl font-bold gradient-text mb-4" id="tradingModalTitle"></h3>
+            <div id="tradingFormContainer">
+                </div>
+        </div>
+    </div>
+
     <script>
-        // Game Data
+        // --- Simulated Database & User Data ---
+        
+        const userWalletDB = {
+            '1234567890123456': { // UID
+                balance: 5000,
+                lastAddRequest: null,
+                positions: {} // { tokenSymbol: { quantity: 10, buyPrice: 100 } }
+            }
+        };
+
+        const USER_UID = '1234567890123456';
+        let userBalance = userWalletDB[USER_UID].balance;
+        let userAchievements = [];
+        let userUID = USER_UID;
+        const ADD_BALANCE_MAX = 5000;
+        const ADD_BALANCE_COOLDOWN = 24 * 60 * 60 * 1000; // 24 hours in ms
+        const ADD_BALANCE_DELAY = 5 * 60 * 1000; // 5 minutes in ms
+        const MIN_TRADE_AMOUNT = 100;
+
         const achievements = [
             { id: "trading-future", name: "Trading Future", description: "Complete your first trade", icon: "💰", color: "from-blue-500 to-purple-500", rarity: "Common", maxClaims: 20000, currentClaims: 15432 },
             { id: "first-victory", name: "First Victory", description: "Win your first game", icon: "🏆", color: "from-yellow-500 to-orange-500", rarity: "Common", maxClaims: 20000, currentClaims: 18765 },
@@ -374,20 +441,33 @@
             { id: "legendary", name: "Legendary Box", cost: 5000, icon: "🌟", color: "from-purple-500 to-pink-600", rewards: ["2500 Coins", "Legendary Achievement", "Mythical Item"] }
         ];
 
-        // User data
-        let userBalance = 5000;
-        let userAchievements = [];
-        let userUID = Math.random().toString().substr(2, 16);
+        let cryptoTokens = [
+            { symbol: "BTC", name: "Bitcoin", icon: "₿", price: 5000000, volatility: 0.05, color: "from-yellow-400 to-orange-500" },
+            { symbol: "ETH", name: "Ethereum", icon: "Ξ", price: 350000, volatility: 0.07, color: "from-gray-300 to-gray-500" },
+            { symbol: "DOGE", name: "Dogecoin", icon: "Ð", price: 15, volatility: 0.15, color: "from-yellow-600 to-yellow-800" },
+            { symbol: "ADA", name: "Cardano", icon: "₳", price: 50, volatility: 0.08, color: "from-blue-500 to-blue-700" },
+            { symbol: "SOL", name: "Solana", icon: "◎", price: 10000, volatility: 0.12, color: "from-purple-500 to-pink-500" },
+            { symbol: "XRP", name: "Ripple", icon: "✕", price: 55, volatility: 0.06, color: "from-gray-400 to-gray-600" },
+            { symbol: "LTC", name: "Litecoin", icon: "Ł", price: 6000, volatility: 0.09, color: "from-blue-300 to-blue-500" },
+            { symbol: "BNB", name: "Binance Coin", icon: "★", price: 40000, volatility: 0.05, color: "from-yellow-600 to-orange-700" },
+            { symbol: "DOT", name: "Polkadot", icon: "•", price: 500, volatility: 0.10, color: "from-pink-500 to-purple-700" },
+            { symbol: "UNI", name: "Uniswap", icon: "🦄", price: 450, volatility: 0.11, color: "from-pink-400 to-pink-600" },
+            { symbol: "LINK", name: "Chainlink", icon: "⧉", price: 1200, volatility: 0.07, color: "from-blue-600 to-blue-800" },
+            { symbol: "TRX", name: "TRON", icon: "₮", price: 8, volatility: 0.14, color: "from-red-500 to-red-700" },
+            { symbol: "AVAX", name: "Avalanche", icon: "∆", price: 2500, volatility: 0.10, color: "from-red-600 to-red-800" }
+        ];
 
-        // Sound effects (base64 encoded)
+        // --- Sound effects (base64 encoded) ---
         const sounds = {
             click: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08=",
             claim: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08=",
             boxOpen: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08=",
-            achievement: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08="
+            achievement: "data:audio/wav;base64,UklGRjoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGBAADgYeKj7G1t7K0t7GzsLh/eFpSW00=",
+            trade: "data:audio/wav;base64,UklGRjoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGBAADgYeKj7G1t7K0t7GzsLh/eFpSW00="
         };
 
-        // Sound manager
+        // --- Core Functions ---
+
         function playSound(soundType) {
             try {
                 const audio = new Audio(sounds[soundType]);
@@ -398,9 +478,11 @@
             }
         }
 
-        // Utility functions
-        function formatNumber(num) {
-            return num.toLocaleString();
+        function formatNumber(num, fixed = 0) {
+            return num.toLocaleString('en-IN', {
+                minimumFractionDigits: fixed,
+                maximumFractionDigits: fixed
+            });
         }
 
         function getRarityColor(rarity) {
@@ -415,8 +497,98 @@
             };
             return colors[rarity] || 'from-gray-500 to-gray-700';
         }
+        
+        // --- Navigation ---
 
-        // Achievement functions
+        function showSection(sectionId) {
+            playSound('click');
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.getElementById(`section-${sectionId}`).classList.remove('hidden');
+
+            document.querySelectorAll('button[id^="nav-"]').forEach(button => {
+                button.classList.remove('active-section');
+                button.style.background = '';
+            });
+
+            const activeNav = document.getElementById(`nav-${sectionId}`);
+            activeNav.classList.add('active-section');
+            if (sectionId === 'achievements') {
+                activeNav.style.background = 'linear-gradient(90deg, var(--electric-blue) 0%, rgba(0, 212, 255, 0.1) 100%)';
+            } else if (sectionId === 'my-achievements') {
+                activeNav.style.background = 'linear-gradient(90deg, var(--neon-purple) 0%, rgba(139, 92, 246, 0.1) 100%)';
+            } else if (sectionId === 'rewards') {
+                activeNav.style.background = 'linear-gradient(90deg, var(--achievement-gold) 0%, rgba(255, 215, 0, 0.1) 100%)';
+            } else if (sectionId === 'trading') {
+                activeNav.style.background = 'linear-gradient(90deg, var(--crypto-green) 0%, rgba(16, 185, 129, 0.1) 100%)';
+            }
+        }
+        
+        // --- Balance & Add Balance System ---
+
+        function updateBalance() {
+            userBalance = userWalletDB[USER_UID].balance;
+            document.getElementById('userBalance').textContent = formatNumber(userBalance);
+        }
+
+        function updateAddBalanceStatus() {
+            const button = document.getElementById('addBalanceButton');
+            const statusText = document.getElementById('addBalanceStatus');
+            const lastRequest = userWalletDB[USER_UID].lastAddRequest;
+            const now = Date.now();
+
+            if (lastRequest && (now - lastRequest < ADD_BALANCE_COOLDOWN)) {
+                const timeRemaining = lastRequest + ADD_BALANCE_COOLDOWN - now;
+                const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+                const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+                
+                button.disabled = true;
+                button.textContent = `Cooldown: ${hours}h ${minutes}m`;
+                button.style.background = 'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)';
+                statusText.textContent = `Next request available in ${hours}h ${minutes}m.`;
+            } else {
+                button.disabled = false;
+                button.textContent = `Request Add Balance (₹${formatNumber(ADD_BALANCE_MAX)})`;
+                button.style.background = 'linear-gradient(135deg, var(--electric-blue) 0%, var(--neon-purple) 100%)';
+                statusText.textContent = 'Maximum ₹5,000 can be added once per day.';
+            }
+        }
+
+        function requestBalanceAdd() {
+            const button = document.getElementById('addBalanceButton');
+            const statusText = document.getElementById('addBalanceStatus');
+
+            if (button.disabled) return;
+
+            const amount = ADD_BALANCE_MAX; 
+            
+            // 1. Send Request (Simulated)
+            userWalletDB[USER_UID].lastAddRequest = Date.now();
+            updateAddBalanceStatus();
+            button.textContent = 'Processing... (5 mins)';
+            button.style.background = 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)';
+
+            // 2. Auto-Add after 5 minutes (Simulated)
+            setTimeout(() => {
+                userWalletDB[USER_UID].balance += amount;
+                updateBalance();
+                updateAddBalanceStatus();
+                statusText.textContent = `₹${formatNumber(amount)} added successfully! New balance: ₹${formatNumber(userBalance)}.`;
+                
+                showRewardModal({
+                    icon: '💸',
+                    title: 'Balance Added!',
+                    description: `Your ₹${formatNumber(amount)} request has been processed.`
+                });
+                
+            }, ADD_BALANCE_DELAY); // 5 minutes delay
+            
+            playSound('claim');
+        }
+
+        // --- Achievement System ---
+
         function renderAchievements() {
             const grid = document.getElementById('achievementGrid');
             grid.innerHTML = '';
@@ -424,23 +596,24 @@
             achievements.forEach(achievement => {
                 const isClaimed = userAchievements.includes(achievement.id);
                 const isAvailable = achievement.currentClaims < achievement.maxClaims;
+                const rarityClass = achievement.rarity === 'Ultimate' ? 'rarity-ultimate' : '';
                 
                 const card = document.createElement('div');
                 card.className = `achievement-box p-6 rounded-2xl border-2 transition-all duration-300 ${
                     isClaimed ? 'claimed-achievement' : 
                     isAvailable ? 'border-electric-blue hover:border-achievement-gold' : 'border-gray-600 opacity-50'
-                }`;
+                } ${rarityClass}`;
                 card.style.background = isClaimed ? 
                     'linear-gradient(135deg, #1F2937 0%, #374151 100%)' : 
                     `linear-gradient(135deg, var(--space-gray) 0%, rgba(139, 92, 246, 0.1) 100%)`;
                 
                 card.innerHTML = `
                     <div class="text-center">
-                        <div class="text-4xl mb-3">${achievement.icon}</div>
-                        <h3 class="text-lg font-bold text-white mb-2">${achievement.name}</h3>
+                        <div class="text-5xl mb-3 animate-achievement-pop">${achievement.icon}</div>
+                        <h3 class="text-xl font-bold text-white mb-2">${achievement.name}</h3>
                         <p class="text-gray-400 text-sm mb-3">${achievement.description}</p>
                         <div class="flex justify-between items-center mb-3">
-                            <span class="text-xs px-2 py-1 rounded-full bg-gradient-to-r ${getRarityColor(achievement.rarity)} text-white">
+                            <span class="text-xs px-2 py-1 rounded-full bg-gradient-to-r ${getRarityColor(achievement.rarity)} text-white font-bold">
                                 ${achievement.rarity}
                             </span>
                             <span class="text-xs text-gray-500">
@@ -455,53 +628,96 @@
                                 Claim Achievement
                             </button>` : 
                             isClaimed ? 
-                                '<div class="text-green-400 font-semibold">✓ Claimed</div>' :
-                                '<div class="text-gray-500 font-semibold">Unavailable</div>'
+                                '<div class="text-green-400 font-semibold flex items-center justify-center space-x-2"><i data-lucide="check-circle" class="w-4 h-4"></i><span>Claimed</span></div>' :
+                                '<div class="text-gray-500 font-semibold flex items-center justify-center space-x-2"><i data-lucide="lock" class="w-4 h-4"></i><span>Unavailable</span></div>'
                         }
                     </div>
                 `;
                 
                 grid.appendChild(card);
             });
-
+            lucide.createIcons();
             updateStats();
         }
 
-        function claimAchievement(achievementId) {
+        function renderMyAchievements() {
+            const grid = document.getElementById('myAchievementGrid');
+            grid.innerHTML = '';
+            
+            if (userAchievements.length === 0) {
+                grid.innerHTML = '<p class="text-gray-400 italic col-span-full">You haven\'t claimed any achievements yet. Claim one now!</p>';
+                return;
+            }
+
+            userAchievements.forEach(id => {
+                const achievement = achievements.find(a => a.id === id);
+                if (!achievement) return;
+
+                const rarityClass = achievement.rarity === 'Ultimate' ? 'rarity-ultimate' : '';
+                
+                const card = document.createElement('div');
+                card.className = `p-6 rounded-2xl border-2 claimed-achievement ${rarityClass}`;
+                card.style.background = 'linear-gradient(135deg, #1F2937 0%, #374151 100%)';
+                
+                card.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <div class="text-4xl animate-pulse-glow">${achievement.icon}</div>
+                        <div>
+                            <h3 class="text-xl font-bold text-green-400">${achievement.name}</h3>
+                            <p class="text-gray-400 text-sm">${achievement.description}</p>
+                            <span class="text-xs px-2 py-1 rounded-full bg-gradient-to-r ${getRarityColor(achievement.rarity)} text-white font-bold mt-2 inline-block">
+                                ${achievement.rarity}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+
+        function claimAchievement(achievementId, fromBox = false) {
             playSound('claim');
             
             const achievement = achievements.find(a => a.id === achievementId);
             if (!achievement || userAchievements.includes(achievementId)) return;
 
             userAchievements.push(achievementId);
-            achievement.currentClaims++;
+            if (!fromBox) {
+                achievement.currentClaims++;
+            }
             
             // Add coins based on rarity
             const coinRewards = {
-                'Common': 50,
-                'Uncommon': 100,
-                'Rare': 250,
-                'Epic': 500,
-                'Legendary': 1000,
-                'Mythical': 2500,
-                'Ultimate': 5000
+                'Common': 50, 'Uncommon': 100, 'Rare': 250, 'Epic': 500, 
+                'Legendary': 1000, 'Mythical': 2500, 'Ultimate': 5000
             };
             
             const reward = coinRewards[achievement.rarity] || 50;
-            userBalance += reward;
+            userWalletDB[USER_UID].balance += reward;
             
             showRewardModal({
                 icon: achievement.icon,
                 title: `${achievement.name} Unlocked!`,
-                description: `You earned ${reward} coins!`
+                description: `You earned ₹${formatNumber(reward)} coins!`
             });
             
             renderAchievements();
+            renderMyAchievements();
             updateBalance();
             playSound('achievement');
+            
+            // Check for trading-future achievement unlock
+            if (achievementId !== 'trading-future' && userWalletDB[USER_UID].positions) {
+                const positionsCount = Object.keys(userWalletDB[USER_UID].positions).length;
+                if (positionsCount > 0 && !userAchievements.includes('trading-future')) {
+                    claimAchievement('trading-future', true);
+                }
+            }
         }
 
-        // Reward box functions
+        // --- Reward Box System ---
+
         function renderRewardBoxes() {
             const grid = document.getElementById('rewardBoxGrid');
             grid.innerHTML = '';
@@ -517,15 +733,15 @@
                 
                 card.innerHTML = `
                     <div class="text-center">
-                        <div class="text-4xl mb-3">${box.icon}</div>
-                        <h3 class="text-lg font-bold text-white mb-2">${box.name}</h3>
-                        <div class="text-achievement-gold font-bold text-xl mb-3">${formatNumber(box.cost)} Coins</div>
+                        <div class="text-5xl mb-3 animate-float">${box.icon}</div>
+                        <h3 class="text-xl font-bold text-white mb-2">${box.name}</h3>
+                        <div class="text-achievement-gold font-bold text-2xl mb-3">₹${formatNumber(box.cost)}</div>
                         <div class="text-xs text-gray-400 mb-4">
                             Possible rewards: ${box.rewards.join(', ')}
                         </div>
                         ${canAfford ? 
                             `<button onclick="openRewardBox('${box.id}')" 
-                                    class="w-full py-2 rounded-xl font-semibold transition-all duration-300 hover:scale-105"
+                                    class="w-full py-2 rounded-xl font-semibold transition-all duration-300 hover:scale-105 animate-pulse"
                                     style="background: linear-gradient(135deg, var(--achievement-gold) 0%, rgba(255, 215, 0, 0.8) 100%); color: var(--space-blue);"
                                     data-testid="button-open-${box.id}">
                                 Open Box
@@ -545,43 +761,352 @@
             const box = rewardBoxes.find(b => b.id === boxId);
             if (!box || userBalance < box.cost) return;
 
-            userBalance -= box.cost;
+            userWalletDB[USER_UID].balance -= box.cost;
             
             // Generate random reward
-            const rewards = ['coins', 'achievement', 'item'];
-            const randomReward = rewards[Math.floor(Math.random() * rewards.length)];
+            const rewardsPool = ['coins', 'achievement', 'item'];
+            const randomRewardType = rewardsPool[Math.floor(Math.random() * rewardsPool.length)];
             
             let rewardText = '';
             let rewardIcon = '🎁';
-            
-            switch (randomReward) {
+            let achievementFound = null;
+
+            switch (randomRewardType) {
                 case 'coins':
-                    const coinAmount = Math.floor(box.cost * (0.5 + Math.random() * 0.8));
-                    userBalance += coinAmount;
-                    rewardText = `You found ${formatNumber(coinAmount)} coins!`;
+                    const coinAmount = Math.floor(box.cost * (0.8 + Math.random() * 0.5)); // 80% to 130% return
+                    userWalletDB[USER_UID].balance += coinAmount;
+                    rewardText = `You found ₹${formatNumber(coinAmount)} coins!`;
                     rewardIcon = '💰';
                     break;
                 case 'achievement':
-                    rewardText = 'You discovered a rare achievement voucher!';
-                    rewardIcon = '🏆';
+                    // Find a random UNCLAIMED achievement
+                    const unclaimed = achievements.filter(a => !userAchievements.includes(a.id));
+                    if (unclaimed.length > 0) {
+                        achievementFound = unclaimed[Math.floor(Math.random() * unclaimed.length)];
+                        claimAchievement(achievementFound.id, true);
+                        rewardText = `You instantly unlocked the **${achievementFound.name}** achievement!`;
+                        rewardIcon = achievementFound.icon;
+                    } else {
+                        // Fallback to coins if all claimed
+                        const coinAmountFallback = Math.floor(box.cost * 1.2);
+                        userWalletDB[USER_UID].balance += coinAmountFallback;
+                        rewardText = `You got an extra large bonus of ₹${formatNumber(coinAmountFallback)} coins!`;
+                        rewardIcon = '💰';
+                    }
                     break;
                 case 'item':
-                    rewardText = 'You found a special item!';
+                    rewardText = 'You found a special Legendary Item!';
                     rewardIcon = '✨';
                     break;
             }
             
-            showRewardModal({
-                icon: rewardIcon,
-                title: 'Box Opened!',
-                description: rewardText
-            });
+            // The claimAchievement function handles the modal if an achievement is unlocked.
+            if (!achievementFound) {
+                showRewardModal({
+                    icon: rewardIcon,
+                    title: 'Box Opened!',
+                    description: rewardText
+                });
+            }
             
             renderRewardBoxes();
             updateBalance();
         }
 
-        // Modal functions
+        // --- Trading System ---
+
+        function updateCryptoPrices() {
+            cryptoTokens = cryptoTokens.map(token => {
+                const change = token.price * token.volatility * (Math.random() - 0.5) * 0.5; // Up to 2.5% change
+                token.lastPrice = token.price;
+                token.price = Math.max(1, token.price + change);
+                token.change = (token.price - token.lastPrice) / token.lastPrice * 100;
+                return token;
+            });
+            if (!document.getElementById('section-trading').classList.contains('hidden')) {
+                renderCryptoGrid();
+            }
+            renderUserPositions();
+        }
+
+        function renderCryptoGrid() {
+            const grid = document.getElementById('cryptoGrid');
+            grid.innerHTML = '';
+
+            cryptoTokens.forEach(token => {
+                const priceClass = token.change >= 0 ? 'crypto-price-up' : 'crypto-price-down';
+                const changeIcon = token.change >= 0 ? 'arrow-up-right' : 'arrow-down-right';
+                const changeColor = token.change >= 0 ? 'text-crypto-green' : 'text-crypto-red';
+
+                const card = document.createElement('div');
+                card.className = `crypto-card p-6 rounded-2xl border-2 border-gray-700 hover:border-electric-blue transition-all duration-300`;
+                card.style.background = `linear-gradient(135deg, var(--space-gray) 0%, rgba(0, 212, 255, 0.05) 100%)`;
+
+                card.innerHTML = `
+                    <div class="flex items-center space-x-4 mb-4">
+                        <div class="text-4xl w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-r ${token.color}">${token.icon}</div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white">${token.name} <span class="text-gray-500 text-sm">(${token.symbol})</span></h3>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-sm text-gray-400">Current Price (INR):</p>
+                        <p class="text-3xl font-bold ${priceClass}">₹${formatNumber(token.price, 2)}</p>
+                        <p class="text-sm flex items-center ${changeColor}">
+                            <i data-lucide="${changeIcon}" class="w-4 h-4 mr-1"></i>
+                            <span>${formatNumber(token.change, 2)}% (1H)</span>
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="openTradingModal('${token.symbol}', 'buy')" 
+                                class="py-2 rounded-xl font-semibold bg-crypto-green text-white hover:bg-opacity-80 transition-all duration-300">
+                            Buy
+                        </button>
+                        <button onclick="openTradingModal('${token.symbol}', 'sell')" 
+                                class="py-2 rounded-xl font-semibold bg-crypto-red text-white hover:bg-opacity-80 transition-all duration-300">
+                            Sell
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        function renderUserPositions() {
+            const container = document.getElementById('userPositions');
+            container.innerHTML = '';
+            let positionsExist = false;
+
+            for (const symbol in userWalletDB[USER_UID].positions) {
+                const position = userWalletDB[USER_UID].positions[symbol];
+                if (position.quantity <= 0) continue;
+
+                positionsExist = true;
+                const token = cryptoTokens.find(t => t.symbol === symbol);
+                const currentValue = position.quantity * token.price;
+                const initialValue = position.quantity * position.buyPrice;
+                const pnl = currentValue - initialValue;
+                const pnlPercent = (pnl / initialValue) * 100;
+                const pnlClass = pnl >= 0 ? 'text-crypto-green' : 'text-crypto-red';
+                const pnlIcon = pnl >= 0 ? 'trending-up' : 'trending-down';
+
+                const div = document.createElement('div');
+                div.className = `p-4 rounded-xl border border-gray-700 flex justify-between items-center ${pnl >= 0 ? 'bg-green-900/20' : 'bg-red-900/20'}`;
+                div.innerHTML = `
+                    <div>
+                        <div class="text-lg font-bold text-white">${token.name} (${token.symbol})</div>
+                        <p class="text-sm text-gray-400">Quantity: ${formatNumber(position.quantity, 4)} | Avg. Buy: ₹${formatNumber(position.buyPrice, 2)}</p>
+                        <p class="text-sm font-semibold mt-1">Current Value: ₹${formatNumber(currentValue, 2)}</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-lg ${pnlClass} flex items-center justify-end">
+                            <i data-lucide="${pnlIcon}" class="w-5 h-5 mr-1"></i>
+                            <span>₹${formatNumber(pnl, 2)}</span>
+                        </div>
+                        <div class="text-sm ${pnlClass}">(${formatNumber(pnlPercent, 2)}%)</div>
+                        <button onclick="openTradingModal('${token.symbol}', 'sell')" 
+                                class="mt-2 px-4 py-1 text-sm rounded-lg font-semibold bg-crypto-red text-white hover:bg-opacity-80 transition-all duration-300">
+                            Sell All
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            }
+
+            if (!positionsExist) {
+                container.innerHTML = '<p class="text-gray-400 italic">You have no open positions.</p>';
+            }
+            lucide.createIcons();
+        }
+
+
+        function openTradingModal(symbol, type) {
+            playSound('click');
+            const token = cryptoTokens.find(t => t.symbol === symbol);
+            const modal = document.getElementById('tradingModal');
+            const title = document.getElementById('tradingModalTitle');
+            const formContainer = document.getElementById('tradingFormContainer');
+
+            title.textContent = `${type.toUpperCase()} ${token.name} (${token.symbol})`;
+
+            const isBuy = type === 'buy';
+            const position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0, buyPrice: 0 };
+            const maxSellQuantity = position.quantity;
+            const maxBuyAmount = userBalance;
+            const maxQuantityByBalance = maxBuyAmount / token.price;
+
+            formContainer.innerHTML = `
+                <div class="mb-4 text-left">
+                    <p class="text-lg font-semibold text-white">Current Price: <span class="text-electric-blue">₹${formatNumber(token.price, 2)}</span></p>
+                    ${!isBuy ? `<p class="text-sm text-gray-400">Owned Quantity: <span class="font-semibold text-neon-purple">${formatNumber(maxSellQuantity, 4)}</span></p>` : `<p class="text-sm text-gray-400">Available Balance: <span class="font-semibold text-achievement-gold">₹${formatNumber(userBalance, 2)}</span></p>`}
+                </div>
+                
+                <div class="space-y-4 mb-6 p-4 rounded-xl border border-gray-700 bg-space-blue">
+                    <div>
+                        <label for="amountInput" class="block text-sm font-medium text-gray-400 mb-1">Amount (₹)</label>
+                        <input type="number" id="amountInput" min="${MIN_TRADE_AMOUNT}" ${isBuy ? `max="${maxBuyAmount}"` : ''}
+                            class="w-full px-3 py-2 bg-space-gray rounded-lg text-white border border-gray-600 focus:border-neon-purple focus:ring focus:ring-neon-purple focus:ring-opacity-50"
+                            oninput="updateQuantityFromAmount('${token.symbol}', '${type}')" step="any" placeholder="Enter amount in INR">
+                    </div>
+                    
+                    <div>
+                        <label for="quantityInput" class="block text-sm font-medium text-gray-400 mb-1">Quantity (${token.symbol})</label>
+                        <input type="number" id="quantityInput" min="${MIN_TRADE_AMOUNT / token.price}" ${isBuy ? `max="${maxQuantityByBalance}"` : `max="${maxSellQuantity}"`}
+                            class="w-full px-3 py-2 bg-space-gray rounded-lg text-white border border-gray-600 focus:border-neon-purple focus:ring focus:ring-neon-purple focus:ring-opacity-50"
+                            oninput="updateAmountFromQuantity('${token.symbol}', '${type}')" step="any" placeholder="Enter quantity">
+                    </div>
+                </div>
+                
+                <p id="tradeError" class="text-red-500 mb-4 font-semibold"></p>
+
+                <div class="flex justify-center space-x-4">
+                    <button onclick="executeTrade('${token.symbol}', '${type}')" 
+                            class="px-8 py-3 rounded-xl font-extrabold transition-all duration-300 hover:scale-105"
+                            style="background: linear-gradient(135deg, ${isBuy ? '#10B981' : '#EF4444'} 0%, ${isBuy ? '#059669' : '#DC2626'} 100%); color: white;">
+                        ${isBuy ? 'Confirm Buy' : 'Confirm Sell'}
+                    </button>
+                    <button onclick="closeTradingModal()" 
+                            class="px-8 py-3 rounded-xl font-semibold bg-gray-600 text-white hover:bg-gray-500 transition-all duration-300">
+                        Cancel
+                    </button>
+                </div>
+            `;
+
+            modal.classList.add('active');
+        }
+
+        function updateQuantityFromAmount(symbol, type) {
+            const token = cryptoTokens.find(t => t.symbol === symbol);
+            const amount = parseFloat(document.getElementById('amountInput').value);
+            const quantityInput = document.getElementById('quantityInput');
+            const error = document.getElementById('tradeError');
+            const isBuy = type === 'buy';
+
+            if (isNaN(amount) || amount <= 0) {
+                quantityInput.value = '';
+                error.textContent = '';
+                return;
+            }
+
+            const calculatedQuantity = amount / token.price;
+            quantityInput.value = calculatedQuantity.toFixed(4);
+
+            if (amount < MIN_TRADE_AMOUNT) {
+                error.textContent = `Minimum trade amount is ₹${MIN_TRADE_AMOUNT}.`;
+            } else if (isBuy && amount > userBalance) {
+                error.textContent = `Insufficient balance. Max buy amount: ₹${formatNumber(userBalance, 2)}.`;
+            } else if (!isBuy) {
+                const position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0 };
+                if (calculatedQuantity > position.quantity) {
+                     error.textContent = `You only own ${formatNumber(position.quantity, 4)} ${symbol}.`;
+                } else {
+                    error.textContent = '';
+                }
+            } else {
+                error.textContent = '';
+            }
+        }
+
+        function updateAmountFromQuantity(symbol, type) {
+            const token = cryptoTokens.find(t => t.symbol === symbol);
+            const quantity = parseFloat(document.getElementById('quantityInput').value);
+            const amountInput = document.getElementById('amountInput');
+            const error = document.getElementById('tradeError');
+            const isBuy = type === 'buy';
+
+            if (isNaN(quantity) || quantity <= 0) {
+                amountInput.value = '';
+                error.textContent = '';
+                return;
+            }
+
+            const calculatedAmount = quantity * token.price;
+            amountInput.value = calculatedAmount.toFixed(2);
+
+            if (calculatedAmount < MIN_TRADE_AMOUNT) {
+                error.textContent = `Minimum trade amount is ₹${MIN_TRADE_AMOUNT}.`;
+            } else if (isBuy && calculatedAmount > userBalance) {
+                error.textContent = `Insufficient balance. Max buy amount: ₹${formatNumber(userBalance, 2)}.`;
+            } else if (!isBuy) {
+                const position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0 };
+                if (quantity > position.quantity) {
+                     error.textContent = `You only own ${formatNumber(position.quantity, 4)} ${symbol}.`;
+                } else {
+                    error.textContent = '';
+                }
+            } else {
+                error.textContent = '';
+            }
+        }
+
+        function executeTrade(symbol, type) {
+            const token = cryptoTokens.find(t => t.symbol === symbol);
+            const amount = parseFloat(document.getElementById('amountInput').value);
+            const quantity = parseFloat(document.getElementById('quantityInput').value);
+            const error = document.getElementById('tradeError');
+
+            if (isNaN(amount) || isNaN(quantity) || amount < MIN_TRADE_AMOUNT) {
+                error.textContent = `Invalid amount or quantity. Minimum trade is ₹${MIN_TRADE_AMOUNT}.`;
+                return;
+            }
+
+            const currentPrice = token.price;
+
+            if (type === 'buy') {
+                if (amount > userBalance) {
+                    error.textContent = 'Insufficient balance.';
+                    return;
+                }
+                
+                userWalletDB[USER_UID].balance -= amount;
+                let position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0, buyPrice: 0 };
+                
+                const totalCost = (position.quantity * position.buyPrice) + amount;
+                const totalQuantity = position.quantity + quantity;
+                const newAvgPrice = totalCost / totalQuantity;
+
+                userWalletDB[USER_UID].positions[symbol] = {
+                    quantity: totalQuantity,
+                    buyPrice: newAvgPrice
+                };
+                
+                // Check for 'trading-future' achievement
+                if (!userAchievements.includes('trading-future')) {
+                    claimAchievement('trading-future', true);
+                }
+
+                showTradeSuccessModal('Buy', symbol, quantity, amount);
+
+            } else if (type === 'sell') {
+                const position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0 };
+                
+                if (quantity > position.quantity) {
+                    error.textContent = `Cannot sell more than owned quantity (${formatNumber(position.quantity, 4)}).`;
+                    return;
+                }
+                
+                userWalletDB[USER_UID].balance += amount;
+                
+                // Update position
+                position.quantity -= quantity;
+                if (position.quantity <= 0.00001) { // Floating point safety
+                    delete userWalletDB[USER_UID].positions[symbol];
+                } else {
+                    userWalletDB[USER_UID].positions[symbol] = position;
+                }
+                
+                showTradeSuccessModal('Sell', symbol, quantity, amount);
+            }
+
+            updateBalance();
+            closeTradingModal();
+            renderUserPositions();
+            playSound('trade');
+        }
+
+        // --- Modal & Utility Functions ---
+
         function showRewardModal(reward) {
             const modal = document.getElementById('rewardModal');
             const icon = document.getElementById('rewardIcon');
@@ -590,7 +1115,7 @@
             
             icon.textContent = reward.icon;
             title.textContent = reward.title;
-            description.textContent = reward.description;
+            description.textContent = reward.description.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold formatting
             
             modal.classList.add('active');
         }
@@ -600,9 +1125,17 @@
             document.getElementById('rewardModal').classList.remove('active');
         }
 
-        // Update functions
-        function updateBalance() {
-            document.getElementById('userBalance').textContent = formatNumber(userBalance);
+        function closeTradingModal() {
+            playSound('click');
+            document.getElementById('tradingModal').classList.remove('active');
+        }
+        
+        function showTradeSuccessModal(type, symbol, quantity, amount) {
+            showRewardModal({
+                icon: type === 'Buy' ? '📈' : '📉',
+                title: `${type} Successful!`,
+                description: `You successfully ${type.toLowerCase()} **${formatNumber(quantity, 4)} ${symbol}** for **₹${formatNumber(amount, 2)}**.`
+            });
         }
 
         function updateStats() {
@@ -611,42 +1144,57 @@
             document.getElementById('totalAvailable').textContent = achievements.length;
         }
 
-        // Initialize application
+        // --- Initialization ---
+
         function initializeApp() {
             // Set user UID
             document.getElementById('userUID').textContent = userUID;
             
             // Render components
             renderAchievements();
+            renderMyAchievements();
             renderRewardBoxes();
+            renderCryptoGrid();
             updateBalance();
+            updateAddBalanceStatus();
+            
+            // Start crypto price update interval (every hour simulated - but here 30 seconds for demo)
+            updateCryptoPrices();
+            setInterval(updateCryptoPrices, 30000); // Update every 30 seconds for a lively demo
+
+            // Set initial active section
+            showSection('achievements');
             
             // Hide loading screen and show main app
             setTimeout(() => {
                 document.getElementById('loadingScreen').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'block';
-                
-                // Initialize Lucide icons
-                if (typeof lucide !== 'undefined') {
-                    lucide.createIcons();
-                }
+                lucide.createIcons();
             }, 2000);
+            
+            // Initial check for add balance status (to restart cooldown timer display)
+            setInterval(updateAddBalanceStatus, 10000);
         }
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', initializeApp);
 
-        // Click sound for all buttons
-        document.addEventListener('click', function(e) {
-            if (e.target.tagName === 'BUTTON') {
-                playSound('click');
-            }
-        });
+        // Click sound for all buttons (already in the original code, but cleaner to manage here if needed)
+        // document.addEventListener('click', function(e) {
+        //     if (e.target.tagName === 'BUTTON' && !e.target.closest('#addBalanceButton')) {
+        //         playSound('click');
+        //     }
+        // });
 
         // Close modal on outside click
         document.getElementById('rewardModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeRewardModal();
+            }
+        });
+        document.getElementById('tradingModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeTradingModal();
             }
         });
     </script>
