@@ -13,6 +13,8 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -33,7 +35,7 @@
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, var(--space-blue) 0%, var(--space-gray) 50%, var(--space-blue) 100%);
-            min-height: 100vh;
+            min-height: 10vh;
             color: white;
             overflow-x: hidden;
         }
@@ -209,7 +211,7 @@
                             <i data-lucide="coins" class="animate-coin-flip" style="color: var(--achievement-gold); width: 20px; height: 20px;"></i>
                             <div>
                                 <div class="text-sm text-gray-300">Balance (INR)</div>
-                                <div class="text-xl font-bold text-achievement-gold" id="userBalance">5,000</div>
+                                <div class="text-xl font-bold text-achievement-gold" id="userBalance">Loading...</div>
                             </div>
                         </div>
                         
@@ -308,6 +310,7 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="achievementGrid">
+                        <p class="text-center text-gray-400 col-span-full">Loading Achievements...</p>
                         </div>
                 </div>
 
@@ -384,42 +387,45 @@
     </div>
 
     <script>
-        // --- Simulated Database & User Data (Front-end only for demo) ---
+        // --- 1. Supabase कॉन्फ़िगरेशन ---
+        const SUPABASE_URL = 'https://[YOUR_PROJECT_ID].supabase.co'; // <--- इसे बदलें
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY'; // <--- इसे बदलें
+
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
-        const userWalletDB = {
-            '1234567890123456': { // UID
-                balance: 5000,
-                lastAddRequest: null, // Timestamp
-                positions: {}, // { tokenSymbol: { quantity: 10, buyPrice: 100 } }
-                totalTradedAmount: 0, // NEW: For High-Volume Trader
-                totalTokensBought: 0  // NEW: For Diamond Hands
+        // --- Simulated Database & User Data (अब Supabase से लोड होगा) ---
+        
+        const USER_UID = '1234567890123456'; // यह UID हर यूजर के लिए यूनिक होगा
+        let userBalance = 0; // Supabase से लोड होगा
+        let userAchievements = []; // Supabase से लोड होगा (IDs)
+        let userWalletDB = { // Local cache/structure for other data
+            [USER_UID]: {
+                balance: 0,
+                lastAddRequest: null,
+                positions: {},
+                totalTradedAmount: 0,
+                totalTokensBought: 0
             }
         };
 
-        const USER_UID = '1234567890123456';
-        let userBalance = userWalletDB[USER_UID].balance;
-        let userAchievements = [];
         let userUID = USER_UID;
         const ADD_BALANCE_MAX = 5000;
         const ADD_BALANCE_COOLDOWN = 24 * 60 * 60 * 1000; // 24 hours in ms
         const ADD_BALANCE_DELAY = 5 * 60 * 1000; // 5 minutes in ms
         const MIN_TRADE_AMOUNT = 100;
 
+        // [ACHIEVEMENTS, REWARD BOXES, CRYPTO TOKENS - यह डेटा स्थिर रहेगा]
         const achievements = [
-            // --- NEW: Special User Achievements (3) ---
-            { id: "red-card-achievement", name: "Red Card", description: "Hold the most volatile token for 7 days.", icon: "🛑", color: "from-red-600 to-red-900", rarity: "Legendary", maxClaims: 100000, currentClaims: 95800 }, // Attractive!
-            { id: "trader-achievement", name: "High-Volume Trader", description: "Trade a total of ₹10,000 in volume.", icon: "💸", color: "from-green-500 to-green-700", rarity: "Rare", maxClaims: 300, currentClaims: 150 }, // Auto unlock
-            { id: "holder-achievement", name: "Diamond Hands", description: "Buy a total of 15,000 crypto tokens.", icon: "💎", color: "from-cyan-500 to-blue-500", rarity: "Epic", maxClaims: 250, currentClaims: 120 }, // Auto unlock
-
-            // --- NEW: Reward Box Pool Achievements (6) ---
+            //... (आपका मूल 'achievements' array यहाँ)
+            { id: "red-card-achievement", name: "Red Card", description: "Hold the most volatile token for 7 days.", icon: "🛑", color: "from-red-600 to-red-900", rarity: "Legendary", maxClaims: 100000, currentClaims: 95800 },
+            { id: "trader-achievement", name: "High-Volume Trader", description: "Trade a total of ₹10,000 in volume.", icon: "💸", color: "from-green-500 to-green-700", rarity: "Rare", maxClaims: 300, currentClaims: 150 }, 
+            { id: "holder-achievement", name: "Diamond Hands", description: "Buy a total of 15,000 crypto tokens.", icon: "💎", color: "from-cyan-500 to-blue-500", rarity: "Epic", maxClaims: 250, currentClaims: 120 }, 
             { id: "red-zone-trader", name: "Red Zone Trader", description: "Make a losing trade and keep holding.", icon: "🔥", color: "from-red-400 to-red-600", rarity: "Common", maxClaims: 20000, currentClaims: 10000 },
             { id: "top-trader", name: "Top Trader", description: "Achieve 5 winning trades in a row.", icon: "📈", color: "from-green-500 to-green-600", rarity: "Uncommon", maxClaims: 15000, currentClaims: 5000 },
             { id: "expert-achievement", name: "Expert", description: "Use all trading features at least once.", icon: "👨‍💼", color: "from-purple-400 to-purple-500", rarity: "Rare", maxClaims: 5000, currentClaims: 3000 },
             { id: "lucky-achievement", name: "Lucky Coin", description: "Open 3 consecutive Bronze Boxes.", icon: "🍀", color: "from-lime-400 to-lime-500", rarity: "Common", maxClaims: 20000, currentClaims: 12000 },
             { id: "first-goal-achievement", name: "First Goal", description: "Complete your first task in the hub.", icon: "🥅", color: "from-blue-400 to-blue-600", rarity: "Common", maxClaims: 20000, currentClaims: 18000 },
             { id: "crypto-master-achievement", name: "Crypto Master", description: "Trade 5 unique crypto tokens.", icon: "🌐", color: "from-indigo-500 to-indigo-700", rarity: "Epic", maxClaims: 1000, currentClaims: 500 },
-            
-            // --- Original Achievements (13) ---
             { id: "trading-future", name: "Trading Future", description: "Complete your first trade", icon: "💰", color: "from-blue-500 to-purple-500", rarity: "Common", maxClaims: 20000, currentClaims: 15432 },
             { id: "first-victory", name: "First Victory", description: "Win your first game", icon: "🏆", color: "from-yellow-500 to-orange-500", rarity: "Common", maxClaims: 20000, currentClaims: 18765 },
             { id: "speed-demon", name: "Speed Demon", description: "Complete a task in under 10 seconds", icon: "⚡", color: "from-cyan-500 to-blue-500", rarity: "Uncommon", maxClaims: 10000, currentClaims: 7234 },
@@ -444,6 +450,7 @@
         ];
 
         let cryptoTokens = [
+            //... (आपका मूल 'cryptoTokens' array यहाँ)
             { symbol: "BTC", name: "Bitcoin", icon: "₿", price: 5000000, volatility: 0.05, color: "from-yellow-400 to-orange-500" },
             { symbol: "ETH", name: "Ethereum", icon: "Ξ", price: 350000, volatility: 0.07, color: "from-gray-300 to-gray-500" },
             { symbol: "DOGE", name: "Dogecoin", icon: "Ð", price: 15, volatility: 0.15, color: "from-yellow-600 to-yellow-800" },
@@ -461,14 +468,123 @@
 
         // --- Sound effects (base64 encoded) ---
         const sounds = {
-            click: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08=",
-            claim: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08=",
-            boxOpen: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08=",
+            click: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtjGcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08=",
+            claim: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtjGcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08=",
+            boxOpen: "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtjGcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hnp1ITC08=",
             achievement: "data:audio/wav;base64,UklGRjoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGBAADgYeKj7G1t7K0t7GzsLh/eFpSW00=",
             trade: "data:audio/wav;base64,UklGRjoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGBAADgYeKj7G1t7K0t7GzsLh/eFpSW00="
         };
 
-        // --- Core Functions ---
+
+        // --- 2. Supabase डेटा फ़ंक्शंस ---
+
+        /**
+         * Supabase से User Wallet Balance और अन्य डेटा लोड करें.
+         */
+        async function loadUserData() {
+            // Loading User Wallet Balance (user_wallet_balance table)
+            let { data: walletData, error: walletError } = await supabase
+                .from('user_wallet_balance')
+                .select('*')
+                .eq('user_uid', USER_UID)
+                .single();
+
+            if (walletError && walletError.code !== 'PGRST116') { // PGRST116 = No row found
+                console.error("Wallet Load Error:", walletError.message);
+                // Handle initial setup if user not found (e.g., insert new user with default balance)
+                await insertInitialUser(USER_UID);
+                return loadUserData(); // Retry load after insertion
+            }
+
+            if (walletData) {
+                userWalletDB[USER_UID] = {
+                    balance: walletData.balance,
+                    lastAddRequest: walletData.last_add_request ? new Date(walletData.last_add_request).getTime() : null,
+                    positions: walletData.positions || {},
+                    totalTradedAmount: walletData.total_traded_amount || 0,
+                    totalTokensBought: walletData.total_tokens_bought || 0
+                };
+                userBalance = userWalletDB[USER_UID].balance;
+            }
+
+
+            // Loading User Achievements (user_achievements table)
+            let { data: achievementData, error: achievementError } = await supabase
+                .from('user_achievements')
+                .select('achievement_id')
+                .eq('user_uid', USER_UID);
+
+            if (achievementError) {
+                console.error("Achievement Load Error:", achievementError.message);
+            }
+
+            if (achievementData) {
+                userAchievements = achievementData.map(row => row.achievement_id);
+            }
+        }
+        
+        /**
+         * यदि उपयोगकर्ता नहीं मिला है, तो उसे एक डिफ़ॉल्ट बैलेंस के साथ डालें.
+         */
+        async function insertInitialUser(uid) {
+            const initialData = {
+                user_uid: uid,
+                balance: 5000,
+                last_add_request: null,
+                positions: {},
+                total_traded_amount: 0,
+                total_tokens_bought: 0
+            };
+            const { error } = await supabase
+                .from('user_wallet_balance')
+                .insert([initialData]);
+
+            if (error) {
+                console.error("Initial User Insert Error:", error.message);
+                alert("Failed to create initial user data. Check console for details.");
+            }
+        }
+
+        /**
+         * Supabase में User Wallet Balance अपडेट करें.
+         */
+        async function updateWalletInDB(newBalance, updateFields = {}) {
+            const dataToUpdate = {
+                balance: newBalance,
+                ...updateFields // जैसे: last_add_request, positions, total_traded_amount
+            };
+            
+            const { error } = await supabase
+                .from('user_wallet_balance')
+                .update(dataToUpdate)
+                .eq('user_uid', USER_UID);
+
+            if (error) {
+                console.error("Wallet Update Error:", error.message);
+                alert("Failed to update wallet balance. See console.");
+                return false;
+            }
+            userBalance = newBalance;
+            return true;
+        }
+
+        /**
+         * Supabase में एक नई उपलब्धि (Achievement) डालें.
+         */
+        async function insertAchievementInDB(achievementId) {
+            const { error } = await supabase
+                .from('user_achievements')
+                .insert([{ user_uid: USER_UID, achievement_id: achievementId }]);
+
+            if (error && error.code !== '23505') { // 23505 = duplicate key (already claimed)
+                console.error("Insert Achievement Error:", error.message);
+                alert("Failed to claim achievement. See console.");
+                return false;
+            }
+            return true;
+        }
+
+        // --- Core Functions (Supabase Integration) ---
 
         function playSound(soundType) {
             try {
@@ -503,6 +619,7 @@
         // --- Navigation ---
 
         function showSection(sectionId) {
+            //... (आपका मूल 'showSection' फ़ंक्शन यहाँ)
             playSound('click');
             document.querySelectorAll('.section').forEach(section => {
                 section.classList.add('hidden');
@@ -529,16 +646,16 @@
             }
         }
         
-        // --- Balance & Add Balance System ---
+        // --- Balance & Add Balance System (Supabase Updated) ---
 
         function updateBalance() {
-            userBalance = userWalletDB[USER_UID].balance;
             document.getElementById('userBalance').textContent = formatNumber(userBalance);
             renderRewardBoxes(); // Update box affordability
             renderCryptoGrid(); // Update trading button states
         }
 
         function updateAddBalanceStatus() {
+            //... (आपका मूल 'updateAddBalanceStatus' फ़ंक्शन यहाँ, सिर्फ local userWalletDB का उपयोग करता है)
             const button = document.getElementById('addBalanceButton');
             const statusText = document.getElementById('addBalanceStatus');
             const lastRequest = userWalletDB[USER_UID].lastAddRequest;
@@ -561,7 +678,7 @@
             }
         }
 
-        function requestBalanceAdd() {
+        async function requestBalanceAdd() {
             const button = document.getElementById('addBalanceButton');
             const statusText = document.getElementById('addBalanceStatus');
 
@@ -569,34 +686,40 @@
 
             const amount = ADD_BALANCE_MAX; 
             
-            // 1. Send Request (Simulated)
+            // 1. Send Request (Simulated & DB Update)
             userWalletDB[USER_UID].lastAddRequest = Date.now();
+            await updateWalletInDB(userBalance, { last_add_request: new Date(userWalletDB[USER_UID].lastAddRequest).toISOString() });
+
             updateAddBalanceStatus();
             button.textContent = 'Processing... (5 mins)';
             button.style.background = 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)';
             
-            // 2. Auto-Add after 5 minutes (Simulated)
-            setTimeout(() => {
-                userWalletDB[USER_UID].balance += amount;
-                updateBalance();
-                updateAddBalanceStatus();
-                statusText.textContent = `₹${formatNumber(amount)} added successfully! New balance: ₹${formatNumber(userBalance)}.`;
-                
-                showRewardModal({
-                    icon: '💸',
-                    title: 'Balance Added!',
-                    subtitle: 'Wallet Update', // Added subtitle
-                    description: `Your **₹${formatNumber(amount)}** request has been processed.`
-                });
+            // 2. Auto-Add after 5 minutes (Simulated & DB Update)
+            setTimeout(async () => {
+                const newBalance = userBalance + amount;
+                const success = await updateWalletInDB(newBalance);
+
+                if (success) {
+                    updateAddBalanceStatus();
+                    statusText.textContent = `₹${formatNumber(amount)} added successfully! New balance: ₹${formatNumber(newBalance)}.`;
+                    
+                    showRewardModal({
+                        icon: '💸',
+                        title: 'Balance Added!',
+                        subtitle: 'Wallet Update',
+                        description: `Your **₹${formatNumber(amount)}** request has been processed.`
+                    });
+                }
                 
             }, ADD_BALANCE_DELAY); // 5 minutes delay
             
             playSound('claim');
         }
 
-        // --- Achievement System ---
+        // --- Achievement System (Supabase Updated) ---
 
         function renderAchievements() {
+            //... (आपका मूल 'renderAchievements' फ़ंक्शन यहाँ)
             const grid = document.getElementById('achievementGrid');
             grid.innerHTML = '';
 
@@ -651,6 +774,7 @@
         }
 
         function renderMyAchievements() {
+            //... (आपका मूल 'renderMyAchievements' फ़ंक्शन यहाँ)
             const grid = document.getElementById('myAchievementGrid');
             grid.innerHTML = '';
             
@@ -687,25 +811,32 @@
             lucide.createIcons();
         }
 
-        function claimAchievement(achievementId, fromBox = false) {
+        async function claimAchievement(achievementId, fromBox = false) {
             playSound('claim');
             
             const achievement = achievements.find(a => a.id === achievementId);
             if (!achievement || userAchievements.includes(achievementId)) return;
 
+            // 1. Supabase में उपलब्धि डालें
+            const insertSuccess = await insertAchievementInDB(achievementId);
+            if (!insertSuccess) return;
+
             userAchievements.push(achievementId);
             if (!fromBox) {
-                achievement.currentClaims++;
+                achievement.currentClaims++; // केवल स्थानीय अपडेट, रियल-टाइम क्लेम काउंट के लिए अलग सिस्टम चाहिए
             }
             
-            // Add coins based on rarity
+            // 2. Coin Reward निर्धारित करें
             const coinRewards = {
                 'Common': 50, 'Uncommon': 100, 'Rare': 250, 'Epic': 500, 
                 'Legendary': 1000, 'Mythical': 2500, 'Ultimate': 5000
             };
             
             const reward = coinRewards[achievement.rarity] || 50;
-            userWalletDB[USER_UID].balance += reward;
+            const newBalance = userBalance + reward;
+
+            // 3. Supabase में बैलेंस अपडेट करें
+            await updateWalletInDB(newBalance);
             
             // NEW: Updated modal display for achievement claim
             showRewardModal({
@@ -720,26 +851,18 @@
             updateBalance();
             playSound('achievement');
             
-            // Check for 'trading-future' achievement unlock
-            if (achievementId !== 'trading-future' && !userAchievements.includes('trading-future')) {
-                const positionsCount = Object.keys(userWalletDB[USER_UID].positions).length;
-                let hasPosition = false;
-                for (const symbol in userWalletDB[USER_UID].positions) {
-                    if (userWalletDB[USER_UID].positions[symbol].quantity > 0) {
-                        hasPosition = true;
-                        break;
-                    }
-                }
+            // 4. Check for 'trading-future' achievement unlock (requires DB check if positions were remote)
+            const hasPosition = Object.keys(userWalletDB[USER_UID].positions).some(symbol => userWalletDB[USER_UID].positions[symbol].quantity > 0);
 
-                if (hasPosition) {
-                    claimAchievement('trading-future', true);
-                }
+            if (achievementId !== 'trading-future' && !userAchievements.includes('trading-future') && hasPosition) {
+                claimAchievement('trading-future', true);
             }
         }
 
-        // --- Reward Box System ---
+        // --- Reward Box System (Supabase Updated) ---
 
         function renderRewardBoxes() {
+            //... (आपका मूल 'renderRewardBoxes' फ़ंक्शन यहाँ)
             const grid = document.getElementById('rewardBoxGrid');
             grid.innerHTML = '';
 
@@ -776,13 +899,17 @@
             });
         }
 
-        function openRewardBox(boxId) {
+        async function openRewardBox(boxId) {
             playSound('boxOpen');
             
             const box = rewardBoxes.find(b => b.id === boxId);
             if (!box || userBalance < box.cost) return;
 
-            userWalletDB[USER_UID].balance -= box.cost;
+            const newBalance = userBalance - box.cost;
+
+            // 1. Supabase में लागत कटौती अपडेट करें (पहले कटौती)
+            const costSuccess = await updateWalletInDB(newBalance);
+            if (!costSuccess) return;
             
             // Generate random reward
             const rewardsPool = ['coins', 'achievement', 'item'];
@@ -795,23 +922,31 @@
             switch (randomRewardType) {
                 case 'coins':
                     const coinAmount = Math.floor(box.cost * (0.8 + Math.random() * 0.5)); // 80% to 130% return
-                    userWalletDB[USER_UID].balance += coinAmount;
+                    const finalCoinBalance = userBalance + coinAmount; // userBalance अब पहले से अपडेट हो चुका है (cost कट गया है)
+                    
+                    // Supabase में कॉइन जोड़ें
+                    await updateWalletInDB(finalCoinBalance);
+
                     rewardText = `You found **₹${formatNumber(coinAmount)}** coins!`;
                     rewardIcon = '💰';
                     break;
                 case 'achievement':
-                    // Find a random UNCLAIMED achievement
                     const unclaimed = achievements.filter(a => !userAchievements.includes(a.id));
                     if (unclaimed.length > 0) {
                         achievementFound = unclaimed[Math.floor(Math.random() * unclaimed.length)];
                         
-                        // Claim achievement directly (modal handled inside claimAchievement for clean flow)
+                        // Claim achievement directly (modal handled inside claimAchievement, which updates DB)
+                        // Note: claimAchievement handles its own balance update, so we return here.
                         claimAchievement(achievementFound.id, true);
-                        return; // Exit here as modal is shown inside claimAchievement
+                        return;
                     } else {
                         // Fallback to coins if all claimed
                         const coinAmountFallback = Math.floor(box.cost * 1.2);
-                        userWalletDB[USER_UID].balance += coinAmountFallback;
+                        const finalFallbackBalance = userBalance + coinAmountFallback;
+
+                        // Supabase में कॉइन जोड़ें
+                        await updateWalletInDB(finalFallbackBalance);
+                        
                         rewardText = `You got an extra large bonus of **₹${formatNumber(coinAmountFallback)}** coins!`;
                         rewardIcon = '💰';
                     }
@@ -834,9 +969,10 @@
             updateBalance();
         }
 
-        // --- Trading System ---
+        // --- Trading System (Supabase Updated) ---
 
         function updateCryptoPrices() {
+            //... (आपका मूल 'updateCryptoPrices' फ़ंक्शन यहाँ)
             cryptoTokens = cryptoTokens.map(token => {
                 token.lastPrice = token.price || token.price; // Initialize lastPrice if null
                 const change = token.price * token.volatility * (Math.random() - 0.5) * 0.5; // Up to 2.5% change
@@ -853,6 +989,7 @@
         }
 
         function renderCryptoGrid() {
+            //... (आपका मूल 'renderCryptoGrid' फ़ंक्शन यहाँ)
             const grid = document.getElementById('cryptoGrid');
             grid.innerHTML = '';
 
@@ -897,12 +1034,14 @@
         }
 
         function renderUserPositions() {
+            //... (आपका मूल 'renderUserPositions' फ़ंक्शन यहाँ)
             const container = document.getElementById('userPositions');
             container.innerHTML = '';
             let positionsExist = false;
+            const currentPositions = userWalletDB[USER_UID].positions;
 
-            for (const symbol in userWalletDB[USER_UID].positions) {
-                const position = userWalletDB[USER_UID].positions[symbol];
+            for (const symbol in currentPositions) {
+                const position = currentPositions[symbol];
                 if (position.quantity <= 0) continue;
 
                 positionsExist = true;
@@ -945,6 +1084,7 @@
 
 
         function openTradingModal(symbol, type) {
+            //... (आपका मूल 'openTradingModal' फ़ंक्शन यहाँ)
             playSound('click');
             const token = cryptoTokens.find(t => t.symbol === symbol);
             const modal = document.getElementById('tradingModal');
@@ -1000,6 +1140,7 @@
         }
 
         function updateQuantityFromAmount(symbol, type) {
+            //... (आपका मूल 'updateQuantityFromAmount' फ़ंक्शन यहाँ)
             const token = cryptoTokens.find(t => t.symbol === symbol);
             const amount = parseFloat(document.getElementById('amountInput').value);
             const quantityInput = document.getElementById('quantityInput');
@@ -1032,6 +1173,7 @@
         }
 
         function updateAmountFromQuantity(symbol, type) {
+            //... (आपका मूल 'updateAmountFromQuantity' फ़ंक्शन यहाँ)
             const token = cryptoTokens.find(t => t.symbol === symbol);
             const quantity = parseFloat(document.getElementById('quantityInput').value);
             const amountInput = document.getElementById('amountInput');
@@ -1064,6 +1206,7 @@
         }
 
         function checkAutomaticAchievements() {
+            //... (आपका मूल 'checkAutomaticAchievements' फ़ंक्शन यहाँ)
             // Check High-Volume Trader (₹10,000 traded)
             if (userWalletDB[USER_UID].totalTradedAmount >= 10000 && !userAchievements.includes('trader-achievement')) {
                 claimAchievement('trader-achievement', true);
@@ -1074,7 +1217,7 @@
             }
         }
 
-        function executeTrade(symbol, type) {
+        async function executeTrade(symbol, type) {
             const token = cryptoTokens.find(t => t.symbol === symbol);
             const amount = parseFloat(document.getElementById('amountInput').value);
             const quantity = parseFloat(document.getElementById('quantityInput').value);
@@ -1085,8 +1228,10 @@
                 return;
             }
 
-            // Update total traded amount (for High-Volume Trader achievement)
-            userWalletDB[USER_UID].totalTradedAmount += amount;
+            // Local updates
+            const userState = userWalletDB[USER_UID];
+            userState.totalTradedAmount += amount;
+            let newBalance = userBalance;
 
             if (type === 'buy') {
                 if (amount > userBalance) {
@@ -1094,18 +1239,16 @@
                     return;
                 }
                 
-                userWalletDB[USER_UID].balance -= amount;
+                newBalance -= amount;
+                userState.totalTokensBought += quantity;
                 
-                // Update total tokens bought (for Diamond Hands achievement)
-                userWalletDB[USER_UID].totalTokensBought += quantity;
-                
-                let position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0, buyPrice: 0 };
+                let position = userState.positions[symbol] || { quantity: 0, buyPrice: 0 };
                 
                 const totalCost = (position.quantity * position.buyPrice) + amount;
                 const totalQuantity = position.quantity + quantity;
                 const newAvgPrice = totalCost / totalQuantity;
 
-                userWalletDB[USER_UID].positions[symbol] = {
+                userState.positions[symbol] = {
                     quantity: totalQuantity,
                     buyPrice: newAvgPrice
                 };
@@ -1115,28 +1258,37 @@
                     claimAchievement('trading-future', true);
                 }
 
-                showTradeSuccessModal('Buy', symbol, quantity, amount);
-
             } else if (type === 'sell') {
-                const position = userWalletDB[USER_UID].positions[symbol] || { quantity: 0 };
+                const position = userState.positions[symbol] || { quantity: 0 };
                 
                 if (quantity > position.quantity) {
                     error.textContent = `Cannot sell more than owned quantity (${formatNumber(position.quantity, 4)}).`;
                     return;
                 }
                 
-                userWalletDB[USER_UID].balance += amount;
+                newBalance += amount;
                 
                 // Update position
                 position.quantity -= quantity;
                 if (position.quantity < 0.00001) { // Floating point safety
-                    delete userWalletDB[USER_UID].positions[symbol];
+                    delete userState.positions[symbol];
                 } else {
-                    userWalletDB[USER_UID].positions[symbol] = position;
+                    userState.positions[symbol] = position;
                 }
-                
-                showTradeSuccessModal('Sell', symbol, quantity, amount);
             }
+
+            // Supabase Update
+            const updateFields = {
+                positions: userState.positions,
+                total_traded_amount: userState.totalTradedAmount,
+                total_tokens_bought: userState.totalTokensBought
+            };
+
+            const success = await updateWalletInDB(newBalance, updateFields);
+            if (!success) return; // DB update failed
+
+            // Post-Trade Success
+            showTradeSuccessModal(type === 'buy' ? 'Buy' : 'Sell', symbol, quantity, amount);
 
             // Check for new auto-achievements after trade
             checkAutomaticAchievements();
@@ -1150,6 +1302,7 @@
         // --- Modal & Utility Functions ---
 
         function showRewardModal(reward) {
+            //... (आपका मूल 'showRewardModal' फ़ंक्शन यहाँ)
             const modal = document.getElementById('rewardModal');
             const icon = document.getElementById('rewardIcon');
             const title = document.getElementById('rewardTitle');
@@ -1175,6 +1328,7 @@
         }
         
         function showTradeSuccessModal(type, symbol, quantity, amount) {
+            //... (आपका मूल 'showTradeSuccessModal' फ़ंक्शन यहाँ)
             showRewardModal({
                 icon: type === 'Buy' ? '📈' : '📉',
                 title: `${type} Successful!`,
@@ -1184,39 +1338,46 @@
         }
 
         function updateStats() {
+            //... (आपका मूल 'updateStats' फ़ंक्शन यहाँ)
             document.getElementById('totalAchievements').textContent = userAchievements.length;
             document.getElementById('claimedCount').textContent = userAchievements.length;
             document.getElementById('totalAvailable').textContent = achievements.length; // Now 22
         }
 
-        // --- Initialization ---
+        // --- Initialization (Supabase Updated) ---
 
-        function initializeApp() {
-            // Set user UID
+        async function initializeApp() {
+            // 1. Load data from Supabase first
+            await loadUserData();
+            
+            // 2. Set user UID
             document.getElementById('userUID').textContent = userUID;
             
-            // Render components
+            // 3. Render components
             renderAchievements();
             renderMyAchievements();
             renderRewardBoxes();
             
-            // Start crypto price update interval (30 seconds for a lively demo)
+            // 4. Start crypto price update interval (30 seconds for a lively demo)
             updateCryptoPrices();
             setInterval(updateCryptoPrices, 30000); 
 
             updateBalance();
             updateAddBalanceStatus();
 
-            // Set initial active section
+            // 5. Set initial active section
             showSection('achievements');
             
-            // Initialize Lucide icons
+            // 6. Initialize Lucide icons
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
             
-            // Initial check for add balance status (to restart cooldown timer display)
+            // 7. Initial check for add balance status (to restart cooldown timer display)
             setInterval(updateAddBalanceStatus, 10000);
+            
+            // 8. Initial check for auto-achievements
+            checkAutomaticAchievements();
         }
 
         // Event listeners
